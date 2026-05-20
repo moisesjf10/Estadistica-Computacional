@@ -1,0 +1,81 @@
+---
+title: "Clasificación de Especies en el Dataset Iris mediante Machine Learning"
+author: 
+  - Moisés Jiménez Fernández
+  - Pablo Martín Palomino
+  - Natalia Yue Gallardo Pretel
+  - Mario Líndez Martínez
+  - Pablo Reyes Sousa
+  - Diego Ortega Sánchez
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Clasificación de Especies en el Dataset Iris mediante Machine Learning}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# 1. Introducción y Planteamiento del Problema
+
+El objetivo de esta vignette es abordar un problema clásico de clasificación utilizando el ecosistema de Machine Learning en R, concretamente a través del paquete caret.
+
+Trabajaremos con el conjunto de datos iris, el cual contiene mediciones geométricas (longitud y ancho de sépalos y pétalos) de tres especies de flores: setosa, versicolor y virginica. Nuestro objetivo es entrenar y comparar seis modelos predictivos distintos para determinar cuál es capaz de clasificar con mayor precisión a qué especie pertenece una flor basándose únicamente en estas dimensiones.
+
+
+# Preparación y Exploración de los Datos
+
+Para garantizar una comparativa rigurosa entre los distintos modelos, realizaremos una única partición del conjunto de datos. Reservaremos un 80% de las observaciones para la fase de entrenamiento y un 20% para la fase de test (evaluación real).
+
+```{r}
+# Carga de librerías necesarias
+#install.packages("caret")
+library(caret)
+library(datasets)
+
+# Cargar el dataset
+data(iris)
+
+# Fijar semilla para reproducibilidad exacta
+set.seed(123) 
+
+# Partición de datos: 80% entrenamiento, 20% test
+trainIndex <- createDataPartition(iris$Species, p = 0.8, list = FALSE)
+trainData  <- iris[trainIndex, ]
+testData   <- iris[-trainIndex, ]
+
+```
+
+Antes de modelar, es útil visualizar cómo se distribuyen las variables geométricas según la especie.
+
+```{r}
+
+```
+
+# 3. Benchmarking: Entrenamiento y Evaluación de Modelos
+
+## 3.1. Regresión Logística Multinomial
+
+## 3.2 Random Forest 
+
+## 3.3. K-Nearest Neighbors (KNN)
+
+## 3.4. Máquinas de Vector de Soporte (SVM) con Kernel Radial
+
+## 3.5. Gradient Boosting 
+
+## 3.6. Red Neuronal Artificial (Multilayer Perceptron)
+
+
+# 4. Discusión y Conclusiones

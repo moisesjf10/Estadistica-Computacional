@@ -1,21 +1,14 @@
 ---
-title: "Clasificación de Especies en el Dataset Iris mediante Machine Learning"
+title: "Análisis Comparativo de Modelos de Clasificación en el Dataset Iris"
 author: 
-  - Moisés Jiménez Fernández
-  - Pablo Martín Palomino
-  - Natalia Yue Gallardo Pretel
-  - Mario Líndez Martínez
-  - Pablo Reyes Sousa
-  - Diego Ortega Sánchez
-date: "`r Sys.Date()`"
+  - name: Moisés Jiménez Fernández | Pablo Martín Palomino | Natalia Yue Gallardo Pretel
+  - name: Mario Líndez Martínez | Pablo Reyes Sousa | Diego Ortega Sánchez
 output: 
-  rmarkdown::html_vignette:
+  html_document:
     toc: true
     toc_depth: 3
-vignette: >
-  %\VignetteIndexEntry{Clasificación de Especies en el Dataset Iris mediante Machine Learning}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+    theme: readable
+    highlight: tango
 ---
 
 ```{r setup, include = FALSE}
@@ -25,8 +18,41 @@ knitr::opts_chunk$set(
   warning = FALSE,
   message = FALSE
 )
+
 ```
 
+<style>
+/* Mejora el estilo de los bloques de código */
+pre {
+  background-color: #f8f9fa !important;
+  border: 1px solid #e9ecef;
+  border-radius: 5px;
+  padding: 15px !important;
+}
+
+/* Mejora el aspecto de las tablas */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 20px;
+}
+th, td {
+  padding: 12px;
+  border-bottom: 1px solid #dee2e6;
+}
+th {
+  background-color: #007bff;
+  color: white;
+}
+
+/* Títulos más elegantes */
+h1, h2, h3 {
+  color: #2c3e50;
+  font-family: 'Segoe UI', sans-serif;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 5px;
+}
+</style>
 # 1. Introducción y Planteamiento del Problema
 
 El objetivo de esta vignette es abordar un problema clásico de clasificación utilizando el ecosistema de Machine Learning en R, concretamente a través del paquete caret.

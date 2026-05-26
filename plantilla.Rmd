@@ -53,11 +53,18 @@ h1, h2, h3 {
   padding-bottom: 5px;
 }
 </style>
+
 # 1. Introducción y Planteamiento del Problema
 
-El objetivo de esta vignette es abordar un problema clásico de clasificación utilizando el ecosistema de Machine Learning en R, concretamente a través del paquete caret.
+## 1. Introducción y Planteamiento del Problema
 
-Trabajaremos con el conjunto de datos iris, el cual contiene mediciones geométricas (longitud y ancho de sépalos y pétalos) de tres especies de flores: setosa, versicolor y virginica. Nuestro objetivo es entrenar y comparar seis modelos predictivos distintos para determinar cuál es capaz de clasificar con mayor precisión a qué especie pertenece una flor basándose únicamente en estas dimensiones.
+El objetivo de este documento es abordar un problema clásico de clasificación desde la perspectiva del Aprendizaje Automático (*Machine Learning*), ilustrando cómo el ecosistema de R proporciona herramientas robustas y unificadas para la modelización predictiva. 
+
+Para este estudio, utilizaremos el conjunto de datos `iris`. Este *dataset* multivariante contiene 150 observaciones correspondientes a tres especies de flores de la familia Iris (*Iris setosa*, *Iris versicolor* e *Iris virginica*). Para cada flor, se disponen de cuatro características morfológicas medidas en centímetros: la longitud y la anchura de los sépalos y pétalos.
+
+Desde un punto de vista matemático y computacional, nos enfrentamos a un problema de clasificación supervisada donde buscamos aproximar una función $f: \mathbb{R}^4 \to \{C_1, C_2, C_3\}$ que mapee las características geométricas al espacio de clases de las especies. 
+
+En lugar de depender de un único enfoque metodológico, esta *vignette* explora el uso del paquete `caret` (*Classification And Regression Training*). Este paquete actúa como una interfaz unificada que simplifica drásticamente el proceso de entrenamiento, ajuste de hiperparámetros y evaluación de múltiples modelos predictivos. A lo largo del documento, contrastaremos enfoques que van desde fronteras de decisión puramente lineales (Regresión Logística) hasta mapeos no lineales complejos (Redes Neuronales y Gradient Boosting), analizando su viabilidad, interpretabilidad y rendimiento empírico.
 
 
 # Preparación y Exploración de los Datos
@@ -86,7 +93,21 @@ testData   <- iris[-trainIndex, ]
 Antes de modelar, es útil visualizar cómo se distribuyen las variables geométricas según la especie.
 
 ```{r}
+library(ggplot2)
+#install.packages("GGally")
+library(GGally)
 
+# Matriz de dispersión detallada (pairwise scatter plots)
+ggpairs(iris, 
+        columns = 1:4,           # Solo las variables geométricas
+        aes(color = Species),    # Colorear por especie
+        upper = list(continuous = wrap("cor", size = 4)), # Correlación
+        lower = list(continuous = wrap("points", alpha = 0.6, size = 1.5)), # Dispersión
+        diag = list(continuous = wrap("densityDiag", alpha = 0.5))) + # Densidad
+  theme_minimal() +
+  labs(title = "Relaciones bidimensionales entre variables",
+       subtitle = "Análisis de la distribución geométrica del dataset Iris") +
+  theme(plot.title = element_text(face = "bold", size = 14))
 ```
 
 # 3. Benchmarking: Entrenamiento y Evaluación de Modelos
@@ -102,6 +123,116 @@ Antes de modelar, es útil visualizar cómo se distribuyen las variables geomét
 ## 3.5. Gradient Boosting 
 
 ## 3.6. Red Neuronal Artificial (Multilayer Perceptron)
+Como último modelo predictivo, implementamos una Red Neuronal Artificial (*Artificial Neural Network*, ANN) mediante el paquete `nnet`. Específicamente, construimos un Perceptrón Multicapa (MLP) del tipo *feed-forward* con una única capa oculta.
 
+A diferencia de los métodos de particionamiento recursivo (como los árboles) o basados en distancias (como KNN), la red neuronal busca aproximar la función de clasificación mediante una combinación lineal de transformaciones no lineales. En nuestro caso, la capa de salida utiliza una transformación logística multinomial (*softmax*) para emitir una distribución de probabilidad sobre las tres posibles especies botánicas.
+
+Matemáticamente, la capa oculta realiza una transformación no lineal del espacio de entrada original $\mathbb{R}^4$. Si denotamos el vector de características de entrada como $X$ y la matriz de pesos sinápticos como $W$, las neuronas aplican una función de activación logística $f(x) = \frac{1}{1 + e^{-x}}$ sobre la combinación lineal $W^T X$. Esto proyecta los datos geométricos de las flores en un nuevo espacio multidimensional donde las clases se vuelven linealmente separables para la capa de salida.
+
+Cabe destacar que las redes neuronales son extremadamente sensibles a la escala de las variables de entrada debido a la forma en que se actualizan los gradientes durante la optimización. Por ello, delegaremos en `caret` la tarea de preprocesar los datos (`center` y `scale`) para que todas las variables tengan media nula y varianza unitaria. Además, para evitar el sobreajuste (*overfitting*) en un conjunto de datos relativamente pequeño, aplicaremos una penalización sobre la norma de los pesos de la red, conocida como regularización de Tikhonov o *weight decay* ($\lambda$). A través de `caret`, realizaremos una búsqueda en malla para encontrar la combinación óptima de neuronas en la capa oculta (`size`) y el factor de decaimiento (`decay`).
+
+```{r nnet-model}
+# Cargamos la librería para poder dibujar la red neuronal
+#install.packages("NeuralNetTools")
+library(NeuralNetTools)
+
+set.seed(123)
+
+# Definimos una malla de hiperparámetros para optimizar la red
+nnetGrid <- expand.grid(
+  size = c(3, 5, 8),        # Número de neuronas en la capa oculta
+  decay = c(0.1, 0.01, 0.001) # Parámetro de penalización L2 (weight decay)
+)
+
+# Entrenamiento del modelo
+mod_nnet <- train(
+  Species ~ ., 
+  data = trainData, 
+  method = "nnet", 
+  preProcess = c("center", "scale"), # Estandarizamos las variables internamente
+  tuneGrid = nnetGrid,
+  trace = FALSE,           # Suprimimos el output iterativo del optimizador
+  MaxNWts = 500            # Límite de pesos para la convergencia
+)
+
+# Mostramos los hiperparámetros óptimos seleccionados por validación cruzada
+mod_nnet$bestTune
+
+```
+Para comprender mejor cómo el modelo procesa la información y abrir la "caja negra" del algoritmo, visualizamos la topología final de la red. Cada línea representa un peso sináptico $w_{ij}$. El grosor y color de estas conexiones nos indica qué mediciones de la flor están activando con mayor intensidad las neuronas de la capa oculta, actuando como extractoras de características geométricas.
+
+```{r}
+# Visualización de la topología de la red neuronal
+plotnet(mod_nnet$finalModel, main = "Arquitectura del Perceptrón Multicapa")
+```
+
+Una vez que `caret` ha determinado la arquitectura óptima, procedemos a evaluar el rendimiento de la red neuronal sobre el conjunto de test independiente.
+
+```{r}
+# Predicción sobre los datos de validación
+pred_nnet <- predict(mod_nnet, newdata = testData)
+
+# Generación de la matriz de confusión
+cm_nnet <- confusionMatrix(pred_nnet, testData$Species)
+# Convertir la tabla de confusión a un formato apto para ggplot2
+cm_data <- as.data.frame(cm_nnet$table)
+
+# Crear el mapa de calor (Heatmap)
+ggplot(data = cm_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
+  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") + 
+  theme_minimal() +
+  labs(title = "Matriz de Confusión: Red Neuronal",
+       x = "Clase Real",
+       y = "Clase Predicha",
+       fill = "Frecuencia") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+```
+
+
+### Visualización de la frontera de decisión
+
+Para comprender a nivel espacial cómo la red neuronal fragmenta el espacio de características, hemos entrenado un modelo auxiliar proyectado exclusivamente sobre el plano definido por las dimensiones del pétalo, ya que el Análisis Exploratorio previo reveló que son las variables más discriminantes.
+
+```{r}
+set.seed(123)
+# Filtramos el dataset para quedarnos solo con 2 variables predictoras
+iris_2d <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
+
+# Entrenamos un modelo simple bidimensional
+mod_2d <- train(Species ~ ., data = iris_2d, method = "nnet", 
+                trace = FALSE, preProcess = c("center", "scale"))
+
+# Creamos una malla de puntos finos sobre el espacio 2D
+grid <- expand.grid(
+  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out = 150),
+  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out = 150)
+)
+
+# Predecimos la clase para cada coordenada de la malla
+grid$Species <- predict(mod_2d, newdata = grid)
+
+# Dibujamos la frontera de decisión y superponemos los datos reales
+ggplot() +
+  geom_tile(data = grid, aes(x = Petal.Length, y = Petal.Width, fill = Species), alpha = 0.3) +
+  geom_point(data = iris_2d, aes(x = Petal.Length, y = Petal.Width, color = Species), 
+             size = 2.5, edgecolor = "black") +
+  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  theme_minimal() +
+  labs(title = "Frontera de decisión de la Red Neuronal",
+       subtitle = "Proyección no lineal sobre Petal.Length vs Petal.Width",
+       x = "Longitud del pétalo (cm)",
+       y = "Ancho del pétalo (cm)") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+### Análisis de los resultados
+
+La evaluación general de la red neuronal confirma una capacidad de clasificación excepcional. Observamos que el modelo logra una clasificación perfecta para la especie setosa, lo cual es consistente tanto en el mapa de calor como en la separación total que se evidencia en el gráfico de la frontera de decisión bidimensional.
+
+El modelo muestra una dificultad mínima en la distinción entre versicolor y virginica (un único error de clasificación en la matriz de confusión). Esto es teóricamente coherente dada la superposición natural de estas dos especies. Como demuestra el gráfico de proyección bidimensional, aunque la red neuronal tiene la capacidad teórica de generar fronteras no lineales, ha optado por trazar divisiones casi rectilíneas. Este fenómeno ilustra perfectamente el impacto del parámetro de regularización (weight decay): al penalizar los pesos grandes para evitar el sobreajuste, las funciones de activación operan en su régimen lineal. La red concluye que una frontera simple es la solución óptima y más generalizable para este subespacio 2D, evitando crear curvas innecesarias ante datos que ya presentan una clara separabilidad lineal.
 
 # 4. Discusión y Conclusiones

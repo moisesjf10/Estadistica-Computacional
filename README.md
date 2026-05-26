@@ -2,8 +2,11 @@
 
 En plantilla.Rmd ya está hecha la partición de los datos.
 
+Si necesitais el codigo de la matriz de confusion lo he puesto en el apartado de la red neuronal (para que todos tengamos el mismo)
+
+sugerencia: he dibujado las fronteras de decision (por si quereis hacerlo tmb con vuestro modelo)
+
 TODO:
-- Introducción (lo que hay es de gemini, hay que explicarlo bien)
 - si hace falta instalar alguna libreria, poner la sentencia porfa
 - en cada modelo dar una explicacion de "porqué" y el "qué significa".
  (EJEMPLO DE GEMINI: 1. Regresión Logística (El Baseline)

@@ -277,6 +277,118 @@ La frontera de decisión bidimensional confirma esta interpretación. En el plan
 
 ## 3.4. Máquinas de Vector de Soporte (SVM) con Kernel Radial
 
+Las Máquinas de Vector de Soporte (SVM) constituyen uno de los algoritmos más potentes y versátiles en el ámbito del Aprendizaje Automático. El objetivo principal de una SVM es encontrar el hiperplano óptimo en un espacio N-dimensional que maximice el margen de separación entre las distintas clases. 
+
+En problemas donde las clases no son linealmente separables en el espacio original, SVM emplea el conocido "truco del kernel" (*kernel trick*). Este mecanismo proyecta implícitamente los datos de entrada a un espacio de mayor dimensión donde sí es posible trazar un hiperplano lineal separador. En este caso, utilizaremos el kernel de Base Radial (RBF, por sus siglas en inglés), cuya función matemática se define como:
+
+$$K(x, x') = \exp(-\sigma ||x - x'||^2)$$
+
+El comportamiento de este modelo está gobernado principalmente por dos hiperparámetros que optimizaremos mediante validación cruzada:
+
+**El parámetro de coste ($C$):** Controla el equilibrio entre lograr un margen amplio y penalizar los errores de clasificación en el conjunto de entrenamiento. Un $C$ alto crea un modelo más estricto (riesgo de sobreajuste), mientras que un $C$ bajo permite un margen más suave (mayor generalización).
+
+**El parámetro del kernel ($\sigma$ o *sigma*):** Define la influencia de una única observación. Valores altos de $\sigma$ hacen que la frontera de decisión sea muy dependiente de los puntos individuales más cercanos, generando fronteras complejas y ajustadas.
+
+Al igual que ocurre con las Redes Neuronales, los algoritmos basados en distancias como SVM son muy sensibles a la escala de las características, por lo que incluiremos un preprocesamiento de estandarización.
+
+### Construcción y entrenamiento del modelo
+
+```{r}
+set.seed(123)
+
+# Definimos una malla de hiperparámetros para optimizar C y sigma
+svmGrid <- expand.grid(
+  sigma = c(0.01, 0.1, 0.5, 1), # Amplitud del kernel radial
+  C = c(0.1, 1, 10, 100)        # Coste o penalización
+)
+
+# Entrenamiento del modelo SVM con Kernel Radial
+mod_svm <- train(
+  Species ~ ., 
+  data = trainData, 
+  method = "svmRadial", 
+  preProcess = c("center", "scale"), 
+  tuneGrid = svmGrid,
+  trControl = trainControl(method = "cv", number = 10) # 10-fold Cross-Validation
+)
+
+# Mostramos los hiperparámetros óptimos seleccionados por validación cruzada
+mod_svm$bestTune
+```
+
+### Evaluación del modelo
+
+Una vez ajustados los hiperparámetros óptimos, procedemos a evaluar el modelo sobre nuestro conjunto de test del 20% reservado inicialmente.
+
+```{r}
+# Predicción sobre los datos de test
+pred_svm <- predict(mod_svm, newdata = testData)
+
+# Generación de la matriz de confusión
+cm_svm <- confusionMatrix(pred_svm, testData$Species)
+
+# Convertir la tabla de confusión a un formato apto para ggplot2
+cm_svm_data <- as.data.frame(cm_svm$table)
+
+# Visualización de la Matriz de Confusión
+ggplot(data = cm_svm_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
+  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") + 
+  theme_minimal() +
+  labs(title = "Matriz de Confusión en Test: SVM (Kernel Radial)",
+       x = "Clase Real",
+       y = "Clase Predicha",
+       fill = "Frecuencia") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+### Visualización de la frontera de decisión
+Para poder comparar visualmente la flexibilidad del kernel radial frente a las fronteras más rígidas de la regresión logística, entrenaremos un modelo SVM auxiliar limitando el conjunto de datos a las dos variables más representativas: Petal.Length y Petal.Width.
+
+```{r}
+set.seed(123)
+
+# Dataset reducido a las dos dimensiones del pétalo
+iris_2d_svm <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
+
+# Entrenamiento del modelo SVM bidimensional
+mod_svm_2d <- train(
+  Species ~ ., 
+  data = iris_2d_svm, 
+  method = "svmRadial", 
+  preProcess = c("center", "scale"),
+  tuneGrid = expand.grid(sigma = mod_svm$bestTune$sigma, C = mod_svm$bestTune$C)
+)
+
+# Creación de la malla de puntos espaciales
+grid_svm <- expand.grid(
+  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out = 150),
+  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out = 150)
+)
+
+# Predicción de la clase para cada punto en el espacio 2D
+grid_svm$Species <- predict(mod_svm_2d, newdata = grid_svm)
+
+# Dibujamos la frontera de decisión no lineal
+ggplot() +
+  geom_tile(data = grid_svm, aes(x = Petal.Length, y = Petal.Width, fill = Species), alpha = 0.3) +
+  geom_point(data = iris_2d_svm, aes(x = Petal.Length, y = Petal.Width, color = Species), 
+             size = 2.5, edgecolor = "black") +
+  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  theme_minimal() +
+  labs(title = "Frontera de decisión de SVM (Kernel Radial)",
+       subtitle = "Proyección no lineal sobre Petal.Length vs Petal.Width",
+       x = "Longitud del pétalo (cm)",
+       y = "Ancho del pétalo (cm)") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+### Análisis de los resultados
+
+La Máquina de Vector de Soporte con kernel radial exhibe un rendimiento sobresaliente, alineándose con las métricas observadas en los modelos anteriores. Como era de esperar, la clase setosa se clasifica perfectamente debido a su aislamiento espacial.El aspecto más destacable se observa en el gráfico de la frontera de decisión: a diferencia de la Regresión Logística, cuyas divisiones son estrictamente rectas, el kernel RBF permite que las fronteras se "doblen" de forma no lineal para encapsular la región de solapamiento entre las especies versicolor y virginica. Al haber optimizado los parámetros $C$ y $\sigma$, la frontera resultante traza un límite suave y natural entre ambas especies, encontrando un equilibrio idóneo entre el ajuste a los datos de entrenamiento y la capacidad de generalización sin incurrir en un sobreajuste evidente de la frontera hacia puntos ruidosos aislados.
+
 ## 3.5. Gradient Boosting 
 
 ## 3.6. Red Neuronal Artificial (Multilayer Perceptron)

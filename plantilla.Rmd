@@ -56,8 +56,6 @@ h1, h2, h3 {
 
 # 1. Introducción y Planteamiento del Problema
 
-## 1. Introducción y Planteamiento del Problema
-
 El objetivo de este documento es abordar un problema clásico de clasificación desde la perspectiva del Aprendizaje Automático (*Machine Learning*), ilustrando cómo el ecosistema de R proporciona herramientas robustas y unificadas para la modelización predictiva. 
 
 Para este estudio, utilizaremos el conjunto de datos `iris`. Este *dataset* multivariante contiene 150 observaciones correspondientes a tres especies de flores de la familia Iris (*Iris setosa*, *Iris versicolor* e *Iris virginica*). Para cada flor, se disponen de cuatro características morfológicas medidas en centímetros: la longitud y la anchura de los sépalos y pétalos.
@@ -113,6 +111,155 @@ ggpairs(iris,
 # 3. Benchmarking: Entrenamiento y Evaluación de Modelos
 
 ## 3.1. Regresión Logística Multinomial
+
+La regresión logística multinomial es una extensión natural de la regresión logística binaria para abordar problemas de clasificación con más de dos categorías. En este caso, la variable de respuesta es `Species`, que puede tomar tres valores: `setosa`, `versicolor` y `virginica`, por lo que el modelo debe estimar la probabilidad de pertenencia a cada una de estas clases.
+
+A diferencia de otros métodos más flexibles, la regresión logística multinomial construye fronteras de decisión lineales en el espacio de predictores.
+
+Desde un punto de vista probabilístico, el modelo estima, para cada observación, una distribución de probabilidad sobre las tres especies. La clase asignada será aquella con mayor probabilidad estimada. Para ello, se utiliza la función `softmax`, que transforma las combinaciones lineales de las variables explicativas en probabilidades positivas que suman uno.
+
+### Construcción y entrenamiento del modelo
+
+Para mantener la misma metodología común del documento, el modelo se ajusta mediante la función `train()` de `caret`, utilizando el método `"multinom"` y una malla de valores para el parámetro de regularización `decay`.
+
+
+```{r}
+set.seed(123)
+
+# Malla de hiperparámetros
+multinomGrid <- expand.grid(
+  decay = c(0.1, 0.01, 0.001, 0) # Parámetro de penalización L2
+)
+
+# Entrenamiento del modelo de regresión logística multinomial
+mod_logit <- train(
+  Species ~ .,
+  data = trainData,
+  method = "multinom",
+  tuneGrid = multinomGrid,
+  trace = FALSE
+)
+
+# Hiperparámetro óptimo seleccionado por validación cruzada
+mod_logit$bestTune
+
+# Resumen del modelo final
+summary(mod_logit$finalModel)
+
+```
+
+
+### Evaluación del modelo
+
+Una vez entrenado el modelo, se realizan predicciones tanto sobre el conjunto de entrenamiento como sobre el conjunto de test. La evaluación en entrenamiento permite analizar el grado de ajuste del modelo a los datos utilizados durante la estimación de los parámetros. Sin embargo, esta medida puede ser optimista, ya que el modelo ya ha visto esas observaciones.
+
+Por ello, se complementa con la evaluación sobre el conjunto de test, formado por observaciones no utilizadas durante el entrenamiento. La comparación entre ambas matrices de confusión permite detectar posibles indicios de sobreajuste: si el rendimiento en entrenamiento fuera muy superior al obtenido en test, podría indicar que el modelo se ha ajustado demasiado a los datos de entrenamiento. En cambio, resultados similares en ambos conjuntos sugieren una buena capacidad de generalización.
+```{r}
+# Predicción sobre el conjunto de entrenamiento
+pred_logit_train <- predict(mod_logit, newdata = trainData)
+
+# Matriz de confusión sobre entrenamiento
+cm_logit_train <- confusionMatrix(pred_logit_train, trainData$Species)
+
+# Mostrar resultados de entrenamiento
+cm_logit_train
+
+# Convertir la matriz de confusión de entrenamiento a data frame
+cm_logit_train_data <- as.data.frame(cm_logit_train$table)
+
+# Visualización de la matriz de confusión en entrenamiento
+ggplot(data = cm_logit_train_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
+  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
+  theme_minimal() +
+  labs(title = "Matriz de Confusión en Entrenamiento: Regresión Logística Multinomial",
+       x = "Clase Real",
+       y = "Clase Predicha",
+       fill = "Frecuencia") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+
+# Predicción sobre el conjunto de test
+pred_logit_test <- predict(mod_logit, newdata = testData)
+
+# Matriz de confusión sobre test
+cm_logit_test <- confusionMatrix(pred_logit_test, testData$Species)
+
+# Mostrar resultados de test
+cm_logit_test
+
+# Convertir la matriz de confusión de test a data frame
+cm_logit_test_data <- as.data.frame(cm_logit_test$table)
+
+# Visualización de la matriz de confusión en test
+ggplot(data = cm_logit_test_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
+  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
+  theme_minimal() +
+  labs(title = "Matriz de Confusión en Test: Regresión Logística Multinomial",
+       x = "Clase Real",
+       y = "Clase Predicha",
+       fill = "Frecuencia") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+### Visualización de la frontera de decisión
+
+El modelo principal de regresión logística multinomial se entrena utilizando las cuatro variables predictoras del dataset. Sin embargo, para visualizar la frontera de decisión se ajusta un modelo auxiliar bidimensional empleando únicamente ``Petal.Length`` y ``Petal.Width``. Esta elección se justifica a partir del análisis exploratorio previo, donde se observa que las variables relacionadas con el pétalo presentan una mayor capacidad discriminante entre especies que las variables del sépalo. En particular, la matriz de dispersión muestra una separación clara de la especie setosa y una diferenciación razonable entre versicolor y virginica en el plano formado por Petal.Length y Petal.Width. Además, ambas variables presentan una correlación elevada, lo que indica que concentran gran parte de la estructura geométrica relevante para la clasificación.
+
+
+```{r}
+set.seed(123)
+
+# Dataset reducido a dos variables predictoras
+iris_2d_logit <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
+
+# Entrenamiento del modelo bidimensional
+mod_logit_2d <- train(
+  Species ~ .,
+  data = iris_2d_logit,
+  method = "multinom",
+  trace = FALSE
+)
+
+# Creación de una malla de puntos sobre el plano bidimensional
+grid_logit <- expand.grid(
+  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out = 150),
+  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out = 150)
+)
+
+# Predicción de la clase para cada punto de la malla
+grid_logit$Species <- predict(mod_logit_2d, newdata = grid_logit)
+
+# Visualización de la frontera de decisión
+ggplot() +
+  geom_tile(data = grid_logit,
+            aes(x = Petal.Length, y = Petal.Width, fill = Species),
+            alpha = 0.3) +
+  geom_point(data = iris_2d_logit,
+             aes(x = Petal.Length, y = Petal.Width, color = Species),
+             size = 2.5) +
+  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  theme_minimal() +
+  labs(title = "Frontera de decisión de la Regresión Logística Multinomial",
+       subtitle = "Proyección lineal sobre Petal.Length vs Petal.Width",
+       x = "Longitud del pétalo (cm)",
+       y = "Ancho del pétalo (cm)") +
+  theme(plot.title = element_text(face = "bold"))
+```
+### Análisis de los resultados
+
+Los resultados muestran que la regresión logística multinomial obtiene un rendimiento muy alto tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 118 de las 120 observaciones, alcanzando una exactitud aproximada del 98,33%. Los únicos errores corresponden a 2 observaciones reales de `versicolor` que son clasificadas como `virginica`.
+
+En el conjunto de test, el modelo mantiene una exactitud elevada, con 29 aciertos sobre 30 observaciones, es decir, un 96,67%. El único error se produce entre las especies `virginica` y `versicolor`, lo que resulta coherente con el mayor solapamiento morfológico entre ambas clases. En cambio, la especie `setosa` se clasifica correctamente en todos los casos, debido a su clara separación respecto al resto.
+
+La comparación entre entrenamiento y test no muestra indicios claros de sobreajuste, ya que la diferencia de rendimiento entre ambos conjuntos es pequeña. Esto sugiere que el modelo generaliza adecuadamente sobre observaciones no vistas.
+
+La frontera de decisión bidimensional confirma esta interpretación. En el plano formado por `Petal.Length` y `Petal.Width`, la región de `setosa` aparece claramente separada, mientras que `versicolor` y `virginica` se sitúan en zonas más próximas. Además, la forma aproximadamente lineal de las fronteras refleja la naturaleza del modelo. A pesar de su simplicidad, la regresión logística multinomial consigue una clasificación muy precisa, por lo que constituye un modelo base sólido, interpretable y computacionalmente eficiente para este problema.
+
 
 ## 3.2 Random Forest 
 

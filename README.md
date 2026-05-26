@@ -16,3 +16,12 @@ TODO:
   
 - poner el codigo necesario y explicar los resultados
 - Al final de todo, comparar todos los modelos y la conclusión
+
+
+# Bibliotecas
+
+```
+install.packages("caret", dependencies = TRUE)
+install.packages("GGally", dependencies = TRUE)
+install.packages("NeuralNetTools", dependencies = TRUE)
+```

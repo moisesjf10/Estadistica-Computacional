@@ -114,9 +114,19 @@ ggpairs(iris,
 
 La regresión logística multinomial es una extensión natural de la regresión logística binaria para abordar problemas de clasificación con más de dos categorías. En este caso, la variable de respuesta es `Species`, que puede tomar tres valores: `setosa`, `versicolor` y `virginica`, por lo que el modelo debe estimar la probabilidad de pertenencia a cada una de estas clases.
 
-A diferencia de otros métodos más flexibles, la regresión logística multinomial construye fronteras de decisión lineales en el espacio de predictores.
+A diferencia de otros métodos más flexibles, la regresión logística multinomial construye fronteras de decisión lineales en el espacio de predictores. Para ello, combina linealmente las variables explicativas y transforma los resultados mediante la función `softmax`.
 
-Desde un punto de vista probabilístico, el modelo estima, para cada observación, una distribución de probabilidad sobre las tres especies. La clase asignada será aquella con mayor probabilidad estimada. Para ello, se utiliza la función `softmax`, que transforma las combinaciones lineales de las variables explicativas en probabilidades positivas que suman uno.
+De forma general, para una observación con vector de características $x$, la probabilidad de pertenecer a la clase $k$ se expresa como:
+
+$$
+P(Y = k \mid X = x) =
+\frac{e^{\beta_{k0} + \beta_k^T x}}
+{\sum_{j=1}^{K} e^{\beta_{j0} + \beta_j^T x}},
+\qquad k = 1,\ldots,K.
+$$
+
+En nuestro caso, $K = 3$, ya que existen tres especies posibles. El modelo asigna cada observación a la clase con mayor probabilidad estimada.
+
 
 ### Construcción y entrenamiento del modelo
 

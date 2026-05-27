@@ -1,9 +1,12 @@
 ---
 title: "Análisis Comparativo de Modelos de Clasificación en el Dataset Iris"
-author: 
-  - name: Moisés Jiménez Fernández | Pablo Martín Palomino | Natalia Yue Gallardo Pretel
-  - name: Mario Líndez Martínez | Pablo Reyes Sousa | Diego Ortega Sánchez
-output: 
+author:
+- name: Moisés Jiménez Fernández | Pablo Martín Palomino | Natalia Yue Gallardo Pretel
+- name: Mario Líndez Martínez | Pablo Reyes Sousa | Diego Ortega Sánchez
+output:
+  pdf_document:
+    toc: true
+    toc_depth: '3'
   html_document:
     toc: true
     toc_depth: 3
@@ -154,7 +157,7 @@ mod_logit <- train(
 mod_logit$bestTune
 
 # Resumen del modelo final
-summary(mod_logit$finalModel)
+#summary(mod_logit$finalModel)
 
 ```
 
@@ -172,7 +175,7 @@ pred_logit_train <- predict(mod_logit, newdata = trainData)
 cm_logit_train <- confusionMatrix(pred_logit_train, trainData$Species)
 
 # Mostrar resultados de entrenamiento
-cm_logit_train
+#cm_logit_train
 
 # Convertir la matriz de confusión de entrenamiento a data frame
 cm_logit_train_data <- as.data.frame(cm_logit_train$table)
@@ -197,7 +200,7 @@ pred_logit_test <- predict(mod_logit, newdata = testData)
 cm_logit_test <- confusionMatrix(pred_logit_test, testData$Species)
 
 # Mostrar resultados de test
-cm_logit_test
+#cm_logit_test
 
 # Convertir la matriz de confusión de test a data frame
 cm_logit_test_data <- as.data.frame(cm_logit_test$table)
@@ -260,6 +263,7 @@ ggplot() +
        y = "Ancho del pétalo (cm)") +
   theme(plot.title = element_text(face = "bold"))
 ```
+
 ### Análisis de los resultados
 
 Los resultados muestran que la regresión logística multinomial obtiene un rendimiento muy alto tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 118 de las 120 observaciones, alcanzando una exactitud aproximada del 98,33%. Los únicos errores corresponden a 2 observaciones reales de `versicolor` que son clasificadas como `virginica`.

@@ -391,7 +391,7 @@ La Máquina de Vector de Soporte con kernel radial exhibe un rendimiento sobresa
 
 ## 3.5. Gradient Boosting 
 
-## 3.6. Red Neuronal Artificial (Multilayer Perceptron)
+## 3.6. Red Neuronal (Multilayer Perceptron)
 Como último modelo predictivo, implementamos una Red Neuronal Artificial (*Artificial Neural Network*, ANN) mediante el paquete `nnet`. Específicamente, construimos un Perceptrón Multicapa (MLP) del tipo *feed-forward* con una única capa oculta.
 
 A diferencia de los métodos de particionamiento recursivo (como los árboles) o basados en distancias (como KNN), la red neuronal busca aproximar la función de clasificación mediante una combinación lineal de transformaciones no lineales. En nuestro caso, la capa de salida utiliza una transformación logística multinomial (*softmax*) para emitir una distribución de probabilidad sobre las tres posibles especies botánicas.

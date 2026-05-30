@@ -279,6 +279,176 @@ La frontera de decisión bidimensional confirma esta interpretación. En el plan
 
 ## 3.3. K-Nearest Neighbors (KNN)
 
+El método **K-Nearest Neighbors** (KNN) es un algoritmo de clasificación supervisada no paramétrico. A diferencia de otros modelos, KNN no estima explícitamente una función de decisión durante una fase de entrenamiento tradicional. En su lugar, conserva las observaciones del conjunto de entrenamiento y clasifica cada nueva observación comparándola con los datos ya conocidos.
+
+En nuestro caso, si una flor tiene medidas parecidas a las de ciertas flores del conjunto de entrenamiento, es razonable asignarle la misma especie que predomina entre esas flores cercanas. Para medir esta cercanía se utiliza habitualmente la distancia euclídea. Si tenemos dos observaciones $x_i$ y $x_j$ con $p$ variables predictoras, dicha distancia viene dada por:
+
+$$
+d(x_i, x_j) = \sqrt{\sum_{l=1}^{p} (x_{il} - x_{jl})^2}.
+$$
+
+Dada una nueva observación $x$, el modelo busca sus $k$ vecinos más cercanos y asigna como predicción la clase mayoritaria entre ellos:
+
+$$
+\hat{y}(x) = \operatorname{moda}\{y_i : x_i \in N_k(x)\},
+$$
+
+donde $N_k(x)$ representa el conjunto de los $k$ vecinos más próximos a $x$.
+
+Por tanto, el hiperparámetro fundamental del modelo es el número de vecinos $k$. Valores pequeños de $k$ generan fronteras de decisión muy flexibles y sensibles al ruido, por lo que pueden producir sobreajuste. En cambio, valores grandes de $k$ suavizan la frontera de decisión, aunque si son excesivos pueden provocar infraajuste.
+
+Además, KNN es especialmente sensible a la escala de las variables, ya que se basa directamente en distancias. Por esta razón, antes de aplicar el algoritmo se estandarizan las variables predictoras mediante centrado y escalado.
+
+### Construcción y entrenamiento del modelo
+
+Para entrenar el modelo se utiliza de nuevo la función `train()` del paquete `caret`. Se define una malla de valores impares para $k$, evitando empates frecuentes en la votación de los vecinos, y se selecciona el mejor valor mediante validación cruzada de 10 particiones.
+
+```{r Busqueda del k óptimo}
+set.seed(123)
+
+# Control de validación cruzada
+ctrl_knn <- trainControl(method = "cv", number = 10)
+
+# Malla de hiperparámetros: número de vecinos
+knnGrid <- expand.grid(
+  k = seq(1, 25, by = 2)
+)
+
+# Entrenamiento del modelo KNN
+mod_knn <- train(
+  Species ~ .,
+  data = trainData,
+  method = "knn",
+  preProcess = c("center", "scale"),
+  tuneGrid = knnGrid,
+  trControl = ctrl_knn
+)
+
+# Valor óptimo de k seleccionado por validación cruzada
+print(paste("Valor óptimo de k seleccionado: ", mod_knn$bestTune$k))
+```
+
+Podemos representar cómo varía la exactitud estimada por validación cruzada en función del número de vecinos considerado.
+
+```{r}
+ggplot(mod_knn) +
+  theme_minimal() +
+  labs(title = "Selección del número de vecinos en KNN",
+       x = "Número de vecinos (k)",
+       y = "Exactitud por validación cruzada") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+Confirmamos visualmente lo devuelto por el proceso de validación cruzada, siendo el número óptimo de vecinos de $k=$ `r mod_knn$bestTune$k`
+
+### Evaluación del modelo
+
+Al igual que en los modelos anteriores, evaluamos el rendimiento tanto sobre el conjunto de entrenamiento como sobre el conjunto de test. La evaluación en entrenamiento permite detectar si el modelo se ajusta demasiado a los datos utilizados para construirlo, mientras que el conjunto de test proporciona una estimación de su capacidad de generalización.
+
+```{r}
+# Predicción sobre el conjunto de entrenamiento
+pred_knn_train <- predict(mod_knn, newdata = trainData)
+
+# Matriz de confusión sobre entrenamiento
+cm_knn_train <- confusionMatrix(pred_knn_train, trainData$Species)
+
+# Convertir la matriz de confusión de entrenamiento a data frame
+cm_knn_train_data <- as.data.frame(cm_knn_train$table)
+
+# Visualización de la matriz de confusión en entrenamiento
+ggplot(data = cm_knn_train_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
+  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
+  theme_minimal() +
+  labs(title = "Matriz de Confusión en Entrenamiento: KNN",
+       x = "Clase Real",
+       y = "Clase Predicha",
+       fill = "Frecuencia") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+# Predicción sobre el conjunto de test
+pred_knn_test <- predict(mod_knn, newdata = testData)
+
+# Matriz de confusión sobre test
+cm_knn_test <- confusionMatrix(pred_knn_test, testData$Species)
+
+# Convertir la matriz de confusión de test a data frame
+cm_knn_test_data <- as.data.frame(cm_knn_test$table)
+
+# Visualización de la matriz de confusión en test
+ggplot(data = cm_knn_test_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
+  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
+  theme_minimal() +
+  labs(title = "Matriz de Confusión en Test: KNN",
+       x = "Clase Real",
+       y = "Clase Predicha",
+       fill = "Frecuencia") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+Las matrices de confusión muestran que el modelo KNN obtiene un rendimiento bastante bueno tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 116 de las 120 observaciones, lo que supone una precisión aproximada del 96.7%. En el conjunto de test clasifica correctamente 28 de las 30 observaciones, con una precisión aproximada del 93.3%.
+
+La clase setosa se identifica perfectamente en ambos conjuntos, lo cual era esperable porque suele estar claramente separada de las otras especies. Los errores aparecen únicamente entre versicolor y virginica, que son las dos clases más parecidas entre sí según las variables medidas. En test, las dos observaciones mal clasificadas corresponden a flores virginica que el modelo predice como versicolor.
+
+En general, los resultados indican que KNN funciona bien para este problema. Además, como el rendimiento en test es similar al de entrenamiento, no parece haber un sobreajuste importante.
+
+### Visualización de la frontera de decisión
+
+El modelo principal KNN se entrena utilizando las cuatro variables predictoras del conjunto de datos. Sin embargo, para poder visualizar la frontera de decisión, ajustamos un modelo auxiliar bidimensional utilizando únicamente `Petal.Length` y `Petal.Width`, las dos variables que poseen una mayor capacidad discriminante. Cabe destacar que esta representación no sustituye al modelo completo, sino que permite interpretar gráficamente cómo se separan las especies en el plano de las variables del pétalo.
+
+```{r}
+set.seed(123)
+
+# Dataset reducido a dos variables predictoras
+iris_2d_knn <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
+
+# Entrenamiento del modelo KNN bidimensional usando el k óptimo del modelo completo
+mod_knn_2d <- train(
+  Species ~ .,
+  data = iris_2d_knn,
+  method = "knn",
+  preProcess = c("center", "scale"),
+  tuneGrid = data.frame(k = mod_knn$bestTune$k),
+  trControl = trainControl(method = "none")
+)
+
+# Creación de una malla de puntos sobre el plano bidimensional
+grid_knn <- expand.grid(
+  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out = 150),
+  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out = 150)
+)
+
+# Predicción de la clase para cada punto de la malla
+grid_knn$Species <- predict(mod_knn_2d, newdata = grid_knn)
+
+# Visualización de la frontera de decisión
+ggplot() +
+  geom_tile(data = grid_knn,
+            aes(x = Petal.Length, y = Petal.Width, fill = Species),
+            alpha = 0.3) +
+  geom_point(data = iris_2d_knn,
+             aes(x = Petal.Length, y = Petal.Width, color = Species),
+             size = 2.5) +
+  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  theme_minimal() +
+  labs(title = "Frontera de decisión de KNN",
+       subtitle = "Proyección sobre Petal.Length vs Petal.Width",
+       x = "Longitud del pétalo (cm)",
+       y = "Ancho del pétalo (cm)") +
+  theme(plot.title = element_text(face = "bold"))
+```
+Se observa que la especie setosa queda claramente separada de las otras dos, ya que sus pétalos son mucho más cortos y estrechos. Por eso el modelo no comete errores con esta clase. En cambio, las clases versicolor y virginica aparecen más próximas entre sí, especialmente en la zona intermedia de longitud y ancho del pétalo. Esto explica que los errores de clasificación se produzcan únicamente entre estas dos especies.
+
+### Análisis de los resultados
+En conjunto, los resultados muestran que KNN funciona bien para el problema de clasificación del conjunto de datos `iris`. Las matrices de confusión muestran una exactitud alta tanto en entrenamiento, 96.67%, como en test, 93.33%. Además, al ser ambos valores similares, no parece haber un sobreajuste importante. no parece haber un sobreajuste importante, por lo que el modelo obtiene una frontera de decisión suficientemente flexible, pero sin depender en exceso de puntos individuales.
+
+Los errores se concentran entre versicolor y virginica, que son las especies con mayor solapamiento, mientras que setosa se clasifica correctamente al estar claramente separada por las variables del pétalo. Esto también se aprecia en la frontera de decisión, donde setosa ocupa una región diferenciada y las dudas aparecen en la zona de transición entre versicolor y virginica.
+
+En conclusión, KNN ofrece un rendimiento sólido en este problema, combinando una frontera de decisión flexible con una buena capacidad de generalización gracias a la selección de $k$ mediante validación cruzada.
+
+
 ## 3.4. Máquinas de Vector de Soporte (SVM) con Kernel Radial
 
 Las Máquinas de Vector de Soporte (SVM) constituyen uno de los algoritmos más potentes y versátiles en el ámbito del Aprendizaje Automático. El objetivo principal de una SVM es encontrar el hiperplano óptimo en un espacio N-dimensional que maximice el margen de separación entre las distintas clases. 
@@ -298,6 +468,7 @@ Al igual que ocurre con las Redes Neuronales, los algoritmos basados en distanci
 ### Construcción y entrenamiento del modelo
 
 ```{r}
+# install.packages("kernlab")
 set.seed(123)
 
 # Definimos una malla de hiperparámetros para optimizar C y sigma

@@ -566,6 +566,197 @@ La Máquina de Vector de Soporte con kernel radial exhibe un rendimiento sobresa
 
 ## 3.5. Gradient Boosting 
 
+Gradient Boosting es un método basado en la combinación secuencial de múltiples árboles de decisión poco profundos en general. La idea consiste en construir una sucesión de modelos simples donde cada nuevo árbol intenta corregir los errores cometidos por el conjunto de árboles previamente entrenados.
+
+A diferencia de algoritmos como Random Forest, donde los árboles se generan de forma independiente y en paralelo, Gradient Boosting construye los árboles de manera iterativa. En cada etapa, se ajusta un nuevo árbol sobre los residuos o errores del modelo actual, mejorando progresivamente la capacidad predictiva del conjunto.
+
+Desde un punto de vista matemático, el modelo final puede expresarse como una suma de árboles de decisión:
+
+$$
+F_M(x)=\sum_{m=1}^{M}\gamma_m h_m(x),
+$$
+
+donde $h_m(x)$ representa el árbol construido en la iteración $m$, $\gamma_m$ es el peso asociado a dicho árbol y $M$ es el número total de árboles que forman el modelo. Cada nuevo árbol se incorpora siguiendo la dirección del gradiente negativo de una función de pérdida, de ahí el término *Gradient Boosting*.
+
+El comportamiento del algoritmo está determinado principalmente por tres hiperparámetros que optimizaremos más adelante:
+
+**Número de árboles (`n.trees`)**: controla cuántos árboles se combinan en el modelo final. Un número reducido puede producir infraajuste, mientras que un número excesivamente elevado puede incrementar el riesgo de sobreajuste.
+
+**Profundidad de interacción (`interaction.depth`)**: determina la complejidad máxima de cada árbol individual. Valores pequeños generan fronteras de decisión más simples, mientras que profundidades elevadas permiten capturar interacciones complejas entre las variables.
+
+**Tasa de aprendizaje (`shrinkage`)**: regula la contribución de cada nuevo árbol al modelo global. Valores pequeños suelen mejorar la capacidad de generalización, aunque requieren un mayor número de árboles para alcanzar un rendimiento óptimo.
+
+Una de las principales ventajas de Gradient Boosting es su capacidad para modelar relaciones no lineales entre las variables explicativas y la variable objetivo. Además, al estar basado en árboles de decisión, no requiere asumir relaciones lineales entre las variables ni es especialmente sensible a diferencias de escala entre los predictores. Esto lo convierte en una alternativa flexible y potente para problemas de clasificación como el conjunto de datos `iris` que usamos.
+
+### Construcción y entrenamiento del modelo
+
+Para mantener una metodología homogénea con el resto de modelos analizados, utilizaremos la función `train()` del paquete `caret`, que permite automatizar el proceso de ajuste y selección de hiperparámetros mediante validación cruzada.
+
+Con el objetivo de encontrar la configuración más adecuada para el conjunto de datos `iris`, definimos un conjunto de posibles valores para los hiperparámetros anteriormente comentados. La selección de la mejor combinación se realizará mediante validación cruzada de 10 particiones (*10-fold Cross Validation*).
+
+El uso de validación cruzada permite estimar el rendimiento esperado del modelo sobre datos no observados durante el entrenamiento, reduciendo la dependencia de una única partición de los datos y proporcionando una selección más robusta de los hiperparámetros.
+
+```{r}
+set.seed(123)
+
+gbmGrid <- expand.grid(
+  interaction.depth = c(1,2,3),
+  n.trees = c(10,25,50,100),
+  shrinkage = c(0.001,0.01,0.1),
+  n.minobsinnode = 10
+)
+
+mod_gbm <- train(
+  Species ~ .,
+  data = trainData,
+  method = "gbm",
+  tuneGrid = gbmGrid,
+  trControl = trainControl(method = "cv", number = 10),
+  verbose = FALSE
+)
+
+mod_gbm$bestTune
+```
+### Evaluación del modelo
+
+Una vez seleccionada la combinación óptima de hiperparámetros mediante validación cruzada, procedemos a evaluar el rendimiento del modelo tanto sobre el conjunto de entrenamiento como sobre el conjunto de test. Esta comparación permitirá analizar la capacidad de generalización del modelo y detectar posibles indicios de sobreajuste.
+
+```{r}
+# Predicción sobre el conjunto de entrenamiento
+pred_gbm_train <- predict(mod_gbm, newdata = trainData)
+
+# Matriz de confusión sobre entrenamiento
+cm_gbm_train <- confusionMatrix(pred_gbm_train, trainData$Species)
+
+# Convertir la matriz de confusión de entrenamiento a data frame
+cm_gbm_train_data <- as.data.frame(cm_gbm_train$table)
+
+# Visualización de la matriz de confusión en entrenamiento
+ggplot(data = cm_gbm_train_data,
+       aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq),
+            vjust = 1,
+            color = "white",
+            fontface = "bold") +
+  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
+  theme_minimal() +
+  labs(title = "Matriz de Confusión en Entrenamiento: Gradient Boosting",
+       x = "Clase Real",
+       y = "Clase Predicha",
+       fill = "Frecuencia") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+# Predicción sobre el conjunto de test
+pred_gbm_test <- predict(mod_gbm, newdata = testData)
+
+# Matriz de confusión sobre test
+cm_gbm_test <- confusionMatrix(pred_gbm_test, testData$Species)
+
+# Convertir la matriz de confusión de test a data frame
+cm_gbm_test_data <- as.data.frame(cm_gbm_test$table)
+
+# Visualización de la matriz de confusión en test
+ggplot(data = cm_gbm_test_data,
+       aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq),
+            vjust = 1,
+            color = "white",
+            fontface = "bold") +
+  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
+  theme_minimal() +
+  labs(title = "Matriz de Confusión en Test: Gradient Boosting",
+       x = "Clase Real",
+       y = "Clase Predicha",
+       fill = "Frecuencia") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+```{r}
+cm_gbm_train
+cm_gbm_test
+```
+Las matrices de confusión muestran que Gradient Boosting obtiene un rendimiento muy elevado sobre el conjunto de entrenamiento. El modelo clasifica correctamente 115 de las 120 observaciones, alcanzando una exactitud aproximada del 95,83%.
+
+La especie `setosa` se identifica perfectamente en todos los casos, lo que refleja la clara separación existente entre esta clase y las demás. Los únicos errores aparecen entre las especies `versicolor` y `virginica`, que presentan características morfológicas más similares y, por tanto, una mayor zona de solapamiento.
+
+Estos resultados indican que el modelo es capaz de capturar los patrones presentes en los datos de entrenamiento sin necesidad de recurrir a fronteras de decisión excesivamente complejas.
+
+### Visualización de la frontera de decisión
+
+Al igual que en los modelos anteriores, el modelo principal de Gradient Boosting se entrena utilizando las cuatro variables predictoras disponibles. Sin embargo, para facilitar la interpretación visual de la frontera de decisión, construiremos un modelo auxiliar bidimensional empleando únicamente las variables `Petal.Length` y `Petal.Width`.
+
+Estas variables presentan una elevada capacidad discriminante entre las distintas especies de iris, tal y como se observó en el análisis exploratorio realizado anteriormente.
+
+```{r}
+set.seed(123)
+
+# Dataset reducido a dos variables predictoras
+iris_2d_gbm <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
+
+# Modelo auxiliar bidimensional
+mod_gbm_2d <- train(
+  Species ~ .,
+  data = iris_2d_gbm,
+  method = "gbm",
+  tuneGrid = expand.grid(
+    interaction.depth = mod_gbm$bestTune$interaction.depth,
+    n.trees = mod_gbm$bestTune$n.trees,
+    shrinkage = mod_gbm$bestTune$shrinkage,
+    n.minobsinnode = mod_gbm$bestTune$n.minobsinnode
+  ),
+  trControl = trainControl(method = "none"),
+  verbose = FALSE
+)
+
+# Malla de puntos
+grid_gbm <- expand.grid(
+  Petal.Length = seq(min(iris$Petal.Length),
+                     max(iris$Petal.Length),
+                     length.out = 150),
+  Petal.Width = seq(min(iris$Petal.Width),
+                    max(iris$Petal.Width),
+                    length.out = 150)
+)
+
+# Predicción sobre la malla
+grid_gbm$Species <- predict(mod_gbm_2d, newdata = grid_gbm)
+
+# Frontera de decisión
+ggplot() +
+  geom_tile(data = grid_gbm,
+            aes(x = Petal.Length,
+                y = Petal.Width,
+                fill = Species),
+            alpha = 0.3) +
+  geom_point(data = iris_2d_gbm,
+             aes(x = Petal.Length,
+                 y = Petal.Width,
+                 color = Species),
+             size = 2.5) +
+  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  theme_minimal() +
+  labs(title = "Frontera de decisión de Gradient Boosting",
+       subtitle = "Proyección sobre Petal.Length vs Petal.Width",
+       x = "Longitud del pétalo (cm)",
+       y = "Ancho del pétalo (cm)") +
+  theme(plot.title = element_text(face = "bold"))
+```
+La frontera de decisión muestra cómo Gradient Boosting divide el espacio de características mediante particiones sucesivas generadas por los árboles de decisión. Se observa una separación clara de la especie setosa, mientras que las regiones correspondientes a versicolor y virginica presentan una zona de transición más compleja. Esta estructura refleja la capacidad del modelo para capturar relaciones no lineales y adaptar la clasificación a la distribución de los datos.
+
+### Análisis de los resultados
+
+Gradient Boosting obtiene un rendimiento muy elevado tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 115 de las 120 observaciones, alcanzando una exactitud del 95,83%. Por su parte, en el conjunto de test clasifica correctamente 28 de las 30 observaciones, lo que supone una exactitud del 93,33%.
+
+La especie setosa se identifica correctamente en todos los casos, tanto en entrenamiento como en test. Los errores de clasificación se concentran exclusivamente entre las especies versicolor y virginica, que presentan características morfológicas más similares y una mayor zona de solapamiento en el espacio de variables.
+
+La diferencia de rendimiento entre entrenamiento y test es reducida, lo que sugiere que el modelo presenta una buena capacidad de generalización y no muestra indicios claros de sobreajuste. Esto indica que la estrategia de validación cruzada utilizada para seleccionar los hiperparámetros ha permitido obtener un equilibrio adecuado entre complejidad y capacidad predictiva.
+
+La frontera de decisión confirma esta interpretación. Se observa una separación clara de la especie setosa, mientras que la región que separa versicolor y virginica presenta una estructura más compleja. La forma escalonada de las fronteras refleja la naturaleza de los árboles de decisión que componen el modelo, permitiendo capturar relaciones no lineales sin necesidad de asumir una forma funcional específica.
+
+En conjunto, los resultados muestran que Gradient Boosting constituye una alternativa potente y flexible para este problema de clasificación, ofreciendo una elevada precisión y una buena capacidad de generalización sobre datos no observados.
+
 ## 3.6. Red Neuronal (Multilayer Perceptron)
 Como último modelo predictivo, implementamos una Red Neuronal Artificial (*Artificial Neural Network*, ANN) mediante el paquete `nnet`. Específicamente, construimos un Perceptrón Multicapa (MLP) del tipo *feed-forward* con una única capa oculta.
 

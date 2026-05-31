@@ -11,14 +11,16 @@ header-includes:
   - \usepackage{mathpazo}
   - \usepackage{titlesec}
   - \renewcommand{\maketitle}{} # Evita que el PDF duplique el título
+  - \newcommand{\sectionbreak}{\clearpage}
+  - \newcommand{\subsectionbreak}{\clearpage}
 output:
-  pdf_document:
-    highlight: tango
   html_document:
     toc: true
     toc_float: true # Crea un menú lateral flotante para el índice en HTML
     toc_depth: 3
     theme: readable
+    highlight: tango
+  pdf_document:
     highlight: tango
 ---
 
@@ -234,20 +236,22 @@ cm_logit_train <- confusionMatrix(pred_logit_train, trainData$Species)
 # Mostrar resultados de entrenamiento
 #cm_logit_train
 
-# Convertir la matriz de confusión de entrenamiento a data frame
-cm_logit_train_data <- as.data.frame(cm_logit_train$table)
+# Función modular para dibujar matrices de confusión
+plot_cm <- function(cm, model_name, type = "Entrenamiento") {
+  cm_data <- as.data.frame(cm$table)
+  ggplot(data = cm_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+    geom_tile() +
+    geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
+    scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
+    theme_minimal() +
+    labs(title = paste("Matriz de Confusión en", type, ":", model_name),
+         x = "Clase Real",
+         y = "Clase Predicha",
+         fill = "Frecuencia") +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+}
 
-# Visualización de la matriz de confusión en entrenamiento
-ggplot(data = cm_logit_train_data, aes(x = Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Entrenamiento: Regresión Logística Multinomial",
-       x = "Clase Real",
-       y = "Clase Predicha",
-       fill = "Frecuencia") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+plot_cm(cm_logit_train, "Regresión Logística", "Entrenamiento")
 
 
 # Predicción sobre el conjunto de test
@@ -259,22 +263,10 @@ cm_logit_test <- confusionMatrix(pred_logit_test, testData$Species)
 # Mostrar resultados de test
 #cm_logit_test
 
-# Convertir la matriz de confusión de test a data frame
-cm_logit_test_data <- as.data.frame(cm_logit_test$table)
-
-# Visualización de la matriz de confusión en test
-ggplot(data = cm_logit_test_data, aes(x = Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Test: Regresión Logística Multinomial",
-       x = "Clase Real",
-       y = "Clase Predicha",
-       fill = "Frecuencia") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+plot_cm(cm_logit_test, "Regresión Logística", "Test")
 ```
 
+<!--
 ### Visualización de la frontera de decisión
 
 El modelo principal de regresión logística multinomial se entrena utilizando las cuatro variables predictoras del dataset. Sin embargo, para visualizar la frontera de decisión se ajusta un modelo auxiliar bidimensional empleando únicamente ``Petal.Length`` y ``Petal.Width``. Esta elección se justifica a partir del análisis exploratorio previo, donde se observa que las variables relacionadas con el pétalo presentan una mayor capacidad discriminante entre especies que las variables del sépalo. En particular, la matriz de dispersión muestra una separación clara de la especie setosa y una diferenciación razonable entre versicolor y virginica en el plano formado por Petal.Length y Petal.Width. Además, ambas variables presentan una correlación elevada, lo que indica que concentran gran parte de la estructura geométrica relevante para la clasificación.
@@ -320,7 +312,7 @@ ggplot() +
        y = "Ancho del pétalo (cm)") +
   theme(plot.title = element_text(face = "bold"))
 ```
-
+-->
 ### Análisis de los resultados
 
 Los resultados muestran que la regresión logística multinomial obtiene un rendimiento muy alto tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 118 de las 120 observaciones, alcanzando una exactitud aproximada del 98,33%. Los únicos errores corresponden a 2 observaciones reales de `versicolor` que son clasificadas como `virginica`.
@@ -394,20 +386,8 @@ pred_rf_train <- predict(mod_rf, newdata = trainData)
 
 # Matriz de confusión de entrenamiento
 cm_rf_train <- confusionMatrix(pred_rf_train, trainData$Species)
-cm_rf_train_data <- as.data.frame(cm_rf_train$table)
 
-
-# Visualización
-ggplot(data = cm_rf_train_data, aes(x= Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Entrenamiento: Random Forest",
-       x="ClaseReal",
-       y="ClasePredicha",
-       fill="Frecuencia") +
-  theme(plot.title=element_text(hjust=0.5,face="bold"))
+plot_cm(cm_rf_train, "Random Forest", "Entrenamiento")
 ```
 
 
@@ -418,19 +398,7 @@ pred_rf_test <- predict(mod_rf, newdata = testData)
 
 # Matriz de confusión de test
 cm_rf_test <- confusionMatrix(pred_rf_test, testData$Species)
-cm_rf_test_data <- as.data.frame(cm_rf_test$table)
-
-# Visualización
-ggplot(data = cm_rf_test_data, aes(x= Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Test: Random Forest",
-       x="ClaseReal",
-       y="ClasePredicha",
-       fill="Frecuencia") +
-  theme(plot.title=element_text(hjust=0.5,face="bold"))
+plot_cm(cm_rf_test, "Random Forest", "Test")
 ```
 
 
@@ -440,7 +408,7 @@ La clase setosa es perfectamente separada (se puede observar que es la diferente
 
 Como se ve, el modelo funciona bastante bien y, debido al ser un ensemble, no existe preocupación por posibles sobreajustes.
 
-
+<!--
 ### Visualizacion de la frontera de decisión
 
 Para representar las fronteras de decisión utilizaré, como el resto de mis compañeros, las variables ``Petal.Length`` y ``Petal.Width`` (discriminan más la población).
@@ -491,6 +459,8 @@ ggplot() +
 
 
 Observamos en este diagrama una clara diferencia entre el resto de modelos: las zonas son mucho más concretas. Esto se debe a que los árboles de decisión clasifican mediantes preguntas binarias, por ejemplo: Si Petal.Length < 2.5 entonces es setosa, si Petal.Width > 1.5 y Petal.Length > 2.5 entonces es virgínica, etc. De esta forma obtenemos unas fronteras de decisión muy exactas. Sin embargo, debido a que la frontera entre virgínica y versicolor es muy difusa (la frontera es mucho más irregular), se dan los errores de clasificación que observamos en el test.
+
+-->
 
 ### Análisis de resultados
 
@@ -573,20 +543,7 @@ pred_knn_train <- predict(mod_knn, newdata = trainData)
 # Matriz de confusión sobre entrenamiento
 cm_knn_train <- confusionMatrix(pred_knn_train, trainData$Species)
 
-# Convertir la matriz de confusión de entrenamiento a data frame
-cm_knn_train_data <- as.data.frame(cm_knn_train$table)
-
-# Visualización de la matriz de confusión en entrenamiento
-ggplot(data = cm_knn_train_data, aes(x = Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Entrenamiento: KNN",
-       x = "Clase Real",
-       y = "Clase Predicha",
-       fill = "Frecuencia") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+plot_cm(cm_knn_train, "KNN", "Entrenamiento")
 
 # Predicción sobre el conjunto de test
 pred_knn_test <- predict(mod_knn, newdata = testData)
@@ -594,20 +551,7 @@ pred_knn_test <- predict(mod_knn, newdata = testData)
 # Matriz de confusión sobre test
 cm_knn_test <- confusionMatrix(pred_knn_test, testData$Species)
 
-# Convertir la matriz de confusión de test a data frame
-cm_knn_test_data <- as.data.frame(cm_knn_test$table)
-
-# Visualización de la matriz de confusión en test
-ggplot(data = cm_knn_test_data, aes(x = Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Test: KNN",
-       x = "Clase Real",
-       y = "Clase Predicha",
-       fill = "Frecuencia") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+plot_cm(cm_knn_test, "KNN", "Test")
 ```
 
 Las matrices de confusión muestran que el modelo KNN obtiene un rendimiento bastante bueno tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 116 de las 120 observaciones, lo que supone una precisión aproximada del 96.7%. En el conjunto de test clasifica correctamente 28 de las 30 observaciones, con una precisión aproximada del 93.3%.
@@ -615,6 +559,9 @@ Las matrices de confusión muestran que el modelo KNN obtiene un rendimiento bas
 La clase setosa se identifica perfectamente en ambos conjuntos, lo cual era esperable porque suele estar claramente separada de las otras especies. Los errores aparecen únicamente entre versicolor y virginica, que son las dos clases más parecidas entre sí según las variables medidas. En test, las dos observaciones mal clasificadas corresponden a flores virginica que el modelo predice como versicolor.
 
 En general, los resultados indican que KNN funciona bien para este problema. Además, como el rendimiento en test es similar al de entrenamiento, no parece haber un sobreajuste importante.
+
+
+<!--
 
 ### Visualización de la frontera de decisión
 
@@ -664,6 +611,7 @@ ggplot() +
 ```
 
 Se observa que la especie setosa queda claramente separada de las otras dos, ya que sus pétalos son mucho más cortos y estrechos. Por eso el modelo no comete errores con esta clase. En cambio, las clases versicolor y virginica aparecen más próximas entre sí, especialmente en la zona intermedia de longitud y ancho del pétalo. Esto explica que los errores de clasificación se produzcan únicamente entre estas dos especies.
+-->
 
 ### Análisis de los resultados
 En conjunto, los resultados muestran que KNN funciona bien para el problema de clasificación del conjunto de datos `iris`. Las matrices de confusión muestran una exactitud alta tanto en entrenamiento, 96.67%, como en test, 93.33%. Además, al ser ambos valores similares, no parece haber un sobreajuste importante. no parece haber un sobreajuste importante, por lo que el modelo obtiene una frontera de decisión suficientemente flexible, pero sin depender en exceso de puntos individuales.
@@ -726,21 +674,11 @@ pred_svm <- predict(mod_svm, newdata = testData)
 # Generación de la matriz de confusión
 cm_svm <- confusionMatrix(pred_svm, testData$Species)
 
-# Convertir la tabla de confusión a un formato apto para ggplot2
-cm_svm_data <- as.data.frame(cm_svm$table)
-
-# Visualización de la Matriz de Confusión
-ggplot(data = cm_svm_data, aes(x = Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") + 
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Test: SVM (Kernel Radial)",
-       x = "Clase Real",
-       y = "Clase Predicha",
-       fill = "Frecuencia") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+plot_cm(cm_svm, "SVM", "Test")
 ```
+
+
+<!--
 
 ### Visualización de la frontera de decisión
 Para poder comparar visualmente la flexibilidad del kernel radial frente a las fronteras más rígidas de la regresión logística, entrenaremos un modelo SVM auxiliar limitando el conjunto de datos a las dos variables más representativas: Petal.Length y Petal.Width.
@@ -783,6 +721,7 @@ ggplot() +
        y = "Ancho del pétalo (cm)") +
   theme(plot.title = element_text(face = "bold"))
 ```
+-->
 
 ### Análisis de los resultados
 
@@ -841,6 +780,7 @@ mod_gbm <- train(
 
 mod_gbm$bestTune
 ```
+
 ### Evaluación del modelo
 
 Una vez seleccionada la combinación óptima de hiperparámetros mediante validación cruzada, procedemos a evaluar el rendimiento del modelo tanto sobre el conjunto de entrenamiento como sobre el conjunto de test. Esta comparación permitirá analizar la capacidad de generalización del modelo y detectar posibles indicios de sobreajuste.
@@ -852,24 +792,7 @@ pred_gbm_train <- predict(mod_gbm, newdata = trainData)
 # Matriz de confusión sobre entrenamiento
 cm_gbm_train <- confusionMatrix(pred_gbm_train, trainData$Species)
 
-# Convertir la matriz de confusión de entrenamiento a data frame
-cm_gbm_train_data <- as.data.frame(cm_gbm_train$table)
-
-# Visualización de la matriz de confusión en entrenamiento
-ggplot(data = cm_gbm_train_data,
-       aes(x = Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq),
-            vjust = 1,
-            color = "white",
-            fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Entrenamiento: Gradient Boosting",
-       x = "Clase Real",
-       y = "Clase Predicha",
-       fill = "Frecuencia") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+plot_cm(cm_gbm_train, "Gradient Boosting", "Entrenamiento")
 
 # Predicción sobre el conjunto de test
 pred_gbm_test <- predict(mod_gbm, newdata = testData)
@@ -877,24 +800,7 @@ pred_gbm_test <- predict(mod_gbm, newdata = testData)
 # Matriz de confusión sobre test
 cm_gbm_test <- confusionMatrix(pred_gbm_test, testData$Species)
 
-# Convertir la matriz de confusión de test a data frame
-cm_gbm_test_data <- as.data.frame(cm_gbm_test$table)
-
-# Visualización de la matriz de confusión en test
-ggplot(data = cm_gbm_test_data,
-       aes(x = Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq),
-            vjust = 1,
-            color = "white",
-            fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Test: Gradient Boosting",
-       x = "Clase Real",
-       y = "Clase Predicha",
-       fill = "Frecuencia") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+plot_cm(cm_gbm_test, "Gradient Boosting", "Test")
 ```
 
 Las matrices de confusión muestran que Gradient Boosting obtiene un rendimiento muy elevado sobre el conjunto de entrenamiento. El modelo clasifica correctamente 115 de las 120 observaciones, alcanzando una exactitud aproximada del 95,83%.
@@ -902,6 +808,8 @@ Las matrices de confusión muestran que Gradient Boosting obtiene un rendimiento
 La especie `setosa` se identifica perfectamente en todos los casos, lo que refleja la clara separación existente entre esta clase y las demás. Los únicos errores aparecen entre las especies `versicolor` y `virginica`, que presentan características morfológicas más similares y, por tanto, una mayor zona de solapamiento.
 
 Estos resultados indican que el modelo es capaz de capturar los patrones presentes en los datos de entrenamiento sin necesidad de recurrir a fronteras de decisión excesivamente complejas.
+
+<!--
 
 ### Visualización de la frontera de decisión
 
@@ -966,6 +874,7 @@ ggplot() +
 ```
 
 La frontera de decisión muestra cómo Gradient Boosting divide el espacio de características mediante particiones sucesivas generadas por los árboles de decisión. Se observa una separación clara de la especie setosa, mientras que las regiones correspondientes a versicolor y virginica presentan una zona de transición más compleja. Esta estructura refleja la capacidad del modelo para capturar relaciones no lineales y adaptar la clasificación a la distribución de los datos.
+-->
 
 ### Análisis de los resultados
 
@@ -1032,23 +941,11 @@ pred_nnet <- predict(mod_nnet, newdata = testData)
 
 # Generación de la matriz de confusión
 cm_nnet <- confusionMatrix(pred_nnet, testData$Species)
-# Convertir la tabla de confusión a un formato apto para ggplot2
-cm_data <- as.data.frame(cm_nnet$table)
-
-# Crear el mapa de calor (Heatmap)
-ggplot(data = cm_data, aes(x = Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") + 
-  theme_minimal() +
-  labs(title = "Matriz de Confusión: Red Neuronal",
-       x = "Clase Real",
-       y = "Clase Predicha",
-       fill = "Frecuencia") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+plot_cm(cm_nnet, "Red Neuronal", "Test")
 
 ```
 
+<!--
 
 ### Visualización de la frontera de decisión
 
@@ -1086,6 +983,7 @@ ggplot() +
        y = "Ancho del pétalo (cm)") +
   theme(plot.title = element_text(face = "bold"))
 ```
+-->
 
 ### Análisis de los resultados
 
@@ -1093,7 +991,96 @@ La evaluación general de la red neuronal confirma una capacidad de clasificaci�
 
 El modelo muestra una dificultad mínima en la distinción entre versicolor y virginica (un único error de clasificación en la matriz de confusión). Esto es teóricamente coherente dada la superposición natural de estas dos especies. Como demuestra el gráfico de proyección bidimensional, aunque la red neuronal tiene la capacidad teórica de generar fronteras no lineales, ha optado por trazar divisiones casi rectilíneas. Este fenómeno ilustra perfectamente el impacto del parámetro de regularización (weight decay): al penalizar los pesos grandes para evitar el sobreajuste, las funciones de activación operan en su régimen lineal. La red concluye que una frontera simple es la solución óptima y más generalizable para este subespacio 2D, evitando crear curvas innecesarias ante datos que ya presentan una clara separabilidad lineal.
 
-# 4. Discusión y Conclusiones
+# 4. Análisis Visual Comparativo de Fronteras de Decisión
+
+Para comprender a nivel espacial cómo cada algoritmo fragmenta el espacio de características, hemos entrenado modelos auxiliares bidimensionales utilizando exclusivamente `Petal.Length` y `Petal.Width`. 
+
+```{r fronteras-decision, fig.width=10, fig.height=7}
+set.seed(123)
+
+# Dataset reducido y malla espacial común
+iris_2d <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
+grid_base <- expand.grid(
+  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out = 150),
+  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out = 150)
+)
+
+# Entrenamiento de modelos 2D (usando los hiperparámetros óptimos)
+mod_logit_2d <- train(Species ~ ., data = iris_2d, method = "multinom", trace = FALSE)
+
+mod_rf_2d <- train(Species ~ ., data = iris_2d, method = "rf", 
+                   tuneGrid = data.frame(mtry = mod_rf$bestTune$mtry), 
+                   trControl = trainControl(method="none"))
+
+mod_knn_2d <- train(Species ~ ., data = iris_2d, method = "knn", 
+                    preProcess = c("center", "scale"),
+                    tuneGrid = data.frame(k = mod_knn$bestTune$k), 
+                    trControl = trainControl(method="none"))
+
+mod_svm_2d <- train(Species ~ ., data = iris_2d, method = "svmRadial", 
+                    preProcess = c("center", "scale"),
+                    tuneGrid = expand.grid(sigma = mod_svm$bestTune$sigma, C = mod_svm$bestTune$C), 
+                    trControl = trainControl(method="none"))
+
+mod_gbm_2d <- train(Species ~ ., data = iris_2d, method = "gbm", verbose = FALSE,
+                    tuneGrid = mod_gbm$bestTune, 
+                    trControl = trainControl(method="none"))
+
+mod_nnet_2d <- train(Species ~ ., data = iris_2d, method = "nnet", trace = FALSE, 
+                     preProcess = c("center", "scale"),
+                     tuneGrid = mod_nnet$bestTune, 
+                     trControl = trainControl(method="none"))
+
+# Función auxiliar para extraer predicciones y empaquetarlas
+get_preds <- function(model, name) {
+  temp_grid <- grid_base
+  temp_grid$Species <- predict(model, newdata = grid_base)
+  temp_grid$Modelo <- name
+  return(temp_grid)
+}
+
+# Unimos todas las predicciones en un solo Data Frame 
+preds_all <- rbind(
+  get_preds(mod_logit_2d, "Regresión Logística"),
+  get_preds(mod_rf_2d, "Random Forest"),
+  get_preds(mod_knn_2d, "KNN"),
+  get_preds(mod_svm_2d, "SVM Radial"),
+  get_preds(mod_gbm_2d, "Gradient Boosting"),
+  get_preds(mod_nnet_2d, "Red Neuronal")
+)
+
+# Aseguramos el orden en el que se dibujarán los paneles
+preds_all$Modelo <- factor(preds_all$Modelo, 
+                           levels = c("Regresión Logística", "Random Forest", "KNN", 
+                                      "SVM Radial", "Gradient Boosting", "Red Neuronal"))
+
+ggplot() +
+  geom_tile(data = preds_all, aes(x = Petal.Length, y = Petal.Width, fill = Species), alpha = 0.3) +
+  geom_point(data = iris_2d, aes(x = Petal.Length, y = Petal.Width, color = Species), 
+             size = 1.5, alpha = 0.8) +
+  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
+  facet_wrap(~ Modelo, ncol = 3) +
+  theme_minimal() +
+  labs(title = "Comparativa de Fronteras de Decisión en 2D",
+       subtitle = "Proyección sobre Petal.Length vs Petal.Width para los 6 algoritmos",
+       x = "Longitud del pétalo (cm)",
+       y = "Ancho del pétalo (cm)") +
+  theme(plot.title = element_text(face = "bold"),
+        strip.text = element_text(face = "bold", size = 11),
+        legend.position = "bottom")
+
+```
+
+Al observar la cuadrícula de proyecciones bidimensionales generada, podemos apreciar claramente cómo la "filosofía" matemática base de cada algoritmo se traduce de forma visual en la manera de dividir el plano de características:
+
+* **Regresión Logística:** Como modelo paramétrico lineal, muestra fronteras estrictamente rectas, trazando cortes geométricos limpios. A pesar de carecer de la flexibilidad necesaria para curvarse alrededor de los datos, su acierto empírico demuestra que una separación lineal simple es notablemente efectiva para este problema.
+* **Modelos basados en Árboles (Random Forest y Gradient Boosting):** Ambos evidencian el comportamiento de partición recursiva. En lugar de líneas diagonales o curvas, generan fronteras ortogonales a los ejes (en forma de "escalera" o bloques). Mientras que Random Forest tiende a aislar subregiones más específicas (pudiendo bordear el ruido local), Gradient Boosting —gracias al control de la tasa de aprendizaje o *shrinkage*— presenta bloques y transiciones más uniformes.
+* **K-Nearest Neighbors (KNN):** Al ser un modelo basado puramente en distancias locales, proporciona regiones sumamente irregulares y adaptadas al enjambre de puntos más cercanos. Exhibe una topología muy flexible y fragmentada, guiada exclusivamente por la densidad de los clústeres en zonas de solapamiento.
+* **Máquinas de Vector de Soporte (SVM Radial):** El uso del *kernel trick* transforma las rígidas separaciones lineales en formas curvas y suaves. Logra "envolver" eficazmente la difusa zona de transición entre *versicolor* y *virginica*, encontrando un hiperplano de separación de margen máximo sin que las fronteras se desvirtúen intentando atrapar valores atípicos (*outliers*).
+* **Red Neuronal (MLP):** Resulta un caso de estudio muy interesante. Aunque la arquitectura del perceptrón multicapa posee la capacidad teórica para mapear límites altamente no lineales, la aplicación deliberada de la regularización (*weight decay*) restringe fuertemente su complejidad gráfica. El optimizador concluye que trazar divisiones casi rectilíneas es la solución más robusta y generalizable para evitar el sobreajuste en este espacio de dos dimensiones.
+
+# 5. Discusión y Conclusiones
 
 ```{r}
 # Predicciones en entrenamiento faltantes (SVM y Red Neuronal)

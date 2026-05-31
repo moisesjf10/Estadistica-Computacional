@@ -4,14 +4,14 @@ author:
 - name: Moisés Jiménez Fernández | Pablo Martín Palomino | Natalia Yue Gallardo Pretel
 - name: Mario Líndez Martínez | Pablo Reyes Sousa | Diego Ortega Sánchez
 output:
-  pdf_document:
-    toc: true
-    toc_depth: '3'
   html_document:
     toc: true
     toc_depth: 3
     theme: readable
     highlight: tango
+  pdf_document:
+    toc: true
+    toc_depth: '3'
 ---
 
 ```{r setup, include = FALSE}
@@ -68,7 +68,7 @@ Desde un punto de vista matemático y computacional, nos enfrentamos a un proble
 En lugar de depender de un único enfoque metodológico, esta *vignette* explora el uso del paquete `caret` (*Classification And Regression Training*). Este paquete actúa como una interfaz unificada que simplifica drásticamente el proceso de entrenamiento, ajuste de hiperparámetros y evaluación de múltiples modelos predictivos. A lo largo del documento, contrastaremos enfoques que van desde fronteras de decisión puramente lineales (Regresión Logística) hasta mapeos no lineales complejos (Redes Neuronales y Gradient Boosting), analizando su viabilidad, interpretabilidad y rendimiento empírico.
 
 
-# Preparación y Exploración de los Datos
+# 2. Preparación y Exploración de los Datos
 
 Para garantizar una comparativa rigurosa entre los distintos modelos, realizaremos una única partición del conjunto de datos. Reservaremos un 80% de las observaciones para la fase de entrenamiento y un 20% para la fase de test (evaluación real).
 
@@ -276,146 +276,6 @@ La frontera de decisión bidimensional confirma esta interpretación. En el plan
 
 
 ## 3.2 Random Forest 
-
-El método de random forest es un método ensemble basado en el entrenamiento de un gran número de árboles de decisión independientes (en tarea de clasificación) utilizando diferentes muestras aleatorias sacadas con reemplazo y el bosque devuelve la característica más votada (la moda) de entre todos los árboles.
-
-A la hora de crear un árbol de decisión, lo normal es coger la variable que permite diferenciar mejor las instancias de las clases. Sin embargo, si utilizamos esta perspectiva para crear los diferentes árboles del bosque, se heredarían los errores obtenidos utilizando esta forma de división. Por esta razón, random forest incluye un hiperparámetro: el número de características a tener en cuenta en cada árbol, las cuales se eligirán de forma aleatoria a la hora de construir los árboles. A este parámetro lo llamaremos ``mtry`` y, como el dataset tiene 4 características, $mtry \in \{1,2,3,4\}$.
-
-Una vez creado un bosque con $S$ árboles, dada una nueva instancia $x$, el método ejecuta la entrada en cada uno de los árboles $\hat{f_i}(x)$ y devuelve el valor más frecuente. Es decir:
-$$
-\hat{f}(x)=\text{moda}\{\hat{f_1}(x), \hat{f_2}(x), ..., \hat{f_S}(x)\}
-$$
-Uno podría pensar que el parámetro $S$ (número de árboles del bosque) es otro hiperaparámetro: si es muy pequeño, hay subajuste; si es muy grande, habrá sobreajuste (como ocurre en la mayoría de modelos). Sin embargo, en el artículo introductorio de los random forest (_Random Forests_ de Leo Breiman) se demuestra que a mayor $S$, mejor desempeño tendrá el bosque con nuevas muestras. La demostración de este suceso se debe a la Ley de los Grandes Números.
-
-### Construcción y entrenamiento del modelo
-
-Para entrenar el modelo se usa ``train`` del paquete Caret utilizando como parámetro ``method = "rf"``. Se define una malla de valores para el hiperparámetro ``mtry`` y se selecciona el mejor valor mediante validación cruzada de 10 particiones.
-
-```{r}
-set.seed(123)
-
-S <- 1000
-
-# Cross validation
-ctrl_rf <- trainControl(method = "cv", number = 10)
-
-# Grid de hiperparámetros
-rfGrid <- expand.grid(mtry = 1:4)
-
-# Entrenamiento
-mod_rf <- train(
-  Species ~ .,
-  data = trainData,
-  method = "rf",
-  tuneGrid = rfGrid,
-  trControl = ctrl_rf,
-  ntree = S,
-)
-
-# Valor óptimo de mtry seleccionado por validación cruzada
-print(paste("Valor óptimo de mtry seleccionado: ", mod_rf$bestTune))
-```
-### Evaluación del modelo
-
-Al igual que en los modelos anteriores, evaluamos el rendimiento tanto sobre el conjunto de entrenamiento
-como sobre el conjunto de test.
-
-```{r}
-# Predicción entrenamiento
-pred_rf_train <- predict(mod_rf, newdata = trainData)
-
-# Matriz de confusión de entrenamiento
-cm_rf_train <- confusionMatrix(pred_rf_train, trainData$Species)
-cm_rf_train_data <- as.data.frame(cm_rf_train$table)
-
-# Visualización
-ggplot(data = cm_rf_train_data, aes(x= Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Entrenamiento: Random Forest",
-       x="ClaseReal",
-       y="ClasePredicha",
-       fill="Frecuencia") +
-  theme(plot.title=element_text(hjust=0.5,face="bold"))
-
-```
-```{r}
-# Predicción test
-pred_rf_test <- predict(mod_rf, newdata = testData)
-
-# Matriz de confusión de test
-cm_rf_test <- confusionMatrix(pred_rf_test, testData$Species)
-cm_rf_test_data <- as.data.frame(cm_rf_test$table)
-
-# Visualización
-ggplot(data = cm_rf_test_data, aes(x= Reference, y = Prediction, fill = Freq)) +
-  geom_tile() +
-  geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-  scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-  theme_minimal() +
-  labs(title = "Matriz de Confusión en Test: Random Forest",
-       x="ClaseReal",
-       y="ClasePredicha",
-       fill="Frecuencia") +
-  theme(plot.title=element_text(hjust=0.5,face="bold"))
-```
-Las matrices de confusión muestran que el modelo de Random Forest tuvo un rendimiento perfecto en entrenamiento y uno bastante bueno en test. La precisión en entrenamiento es del 100% mientras que en test acertó 28 de las 30 muestras, con una precisión del 93.3%.
-
-La clase setosa es perfectamente separada (se puede observar que es la diferente en las observaciones geométricas) mientras que hay algo de confusión entre la clase virgínica y la versicolar, que hay un poco más de solapamiento en sus distribuciones.
-
-Como se ve, el modelo funciona bastante bien y, debido al ser un ensemble, no existe preocupación por posibles sobreajustes.
-
-### Visualizacion de la frontera de decisión
-
-Para representar las fronteras de decisión utilizaré, como el resto de mis compañeros, las variables ``Petal.Length`` y ``Petal.Width`` (discriminan más la población).
-
-```{r}
-set.seed(123)
-
-# Dataset reducido a dos variables predictoras
-iris_2d_rf <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
-
-mod_rf_2d<-train(
-  Species ~ .,
-  data=iris_2d_rf,
-  method="rf",
-  tuneGrid=data.frame(mtry=mod_rf$bestTune$mtry),
-  trControl =trainControl(method="none")
-)
-
-#Creación de una malla de puntos sobre el plano bidimensional
-grid_rf <- expand.grid(
-  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out=150),
-  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out=150)
-)
-
-#Predicción de la clase para cada punto de la malla
-grid_rf$Species <- predict(mod_rf_2d, newdata = grid_rf)
-
-#Visualizacióndelafronteradedecisión
-ggplot() +
-  geom_tile(data = grid_rf,
-            aes(x=Petal.Length, y=Petal.Width, fill = Species),
-            alpha = 0.3) +
-  geom_point(data = iris_2d_rf, 
-             aes(x = Petal.Length, y = Petal.Width, color = Species),
-             size = 2.5) +
-  scale_fill_manual(values=c("#F8766D", "#00BA38", "#619CFF")) +
-  scale_color_manual(values=c("#F8766D", "#00BA38", "#619CFF")) +
-  theme_minimal() +
-  labs(title="Frontera de decisión de Random Forest",
-       subtitle = "Proyección sobre Petal.Length vs Petal.Width",
-       x = "Longitud del pétalo (cm)",
-       y = "Ancho del pétalo (cm)") +
-  theme(plot.title = element_text(face = "bold"))
-```
-Observamos en este diagrama una clara diferencia entre el resto de modelos: las zonas son mucho más concretas. Esto se debe a que los árboles de decisión clasifican mediantes preguntas binarias, por ejemplo: Si Petal.Length < 2.5 entonces es setosa, si Petal.Width > 1.5 y Petal.Length > 2.5 entonces es virgínica, etc. De esta forma obtenemos unas fronteras de decisión muy exactas. Sin embargo, debido a que la frontera entre virgínica y versicolor es muy difusa (la frontera es mucho más irregular), se dan los errores de clasificación que observamos en el test.
-
-### Análisis de resultados
-
-En general, se observa que Random Forest produce muy buenos resultados para el problema de clasificación. Posee una matriz de confusión perfecta para entrenamiento y una muy buena para test. Además, la base teórica de la que se deduce imposibilidad de sobreajuste puede permitirnos aumentar el número de árboles sin miedo alguno, pudiendo mejorar el modelo aún más. Sin embargo, si bien es cierto que en este problema tenemos pocas características y, por tanto, la creación de árboles es mucho más rápida, en problemas de clasificación en los que hay cientos de características, la creación de los árboles puede suponer un gran coste temporal, por lo que cabría razonar la idea de perder precisión de un modelo a cambio de ganar en optimización.
 
 ## 3.3. K-Nearest Neighbors (KNN)
 

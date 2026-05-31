@@ -10,8 +10,6 @@ header-includes:
   - \renewcommand{\contentsname}{Índice}
   - \usepackage{mathpazo}
   - \usepackage{titlesec}
-  - \newcommand{\sectionbreak}{\clearpage}
-  - \newcommand{\subsectionbreak}{\clearpage}
   - \renewcommand{\maketitle}{} # Evita que el PDF duplique el título
 output:
   pdf_document:
@@ -71,15 +69,7 @@ Diego Ortega Sánchez \par}
 \tableofcontents
 \newpage
 
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  warning = FALSE,
-  message = FALSE
-)
 
-```
 
 <style>
 /* Mejora el estilo de los bloques de código */
@@ -129,7 +119,17 @@ En lugar de depender de un único enfoque metodológico, esta *vignette* explora
 
 Para garantizar una comparativa rigurosa entre los distintos modelos, realizaremos una única partición del conjunto de datos. Reservaremos un 80% de las observaciones para la fase de entrenamiento y un 20% para la fase de test (evaluación real).
 
-```{r}
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 6,        
+  fig.height = 4,       
+  out.width = "70%",    
+  fig.align = "center"  
+)
 # Carga de librerías necesarias
 #install.packages("caret")
 library(caret)
@@ -354,6 +354,7 @@ Uno podría pensar que el parámetro $S$ (número de árboles del bosque) es otr
 
 
 ### Construcción y entrenamiento del modelo
+
 Para entrenar el modelo se usa ``train`` del paquete Caret utilizando como parámetro ``method = "rf"``. Se define una malla de valores para el hiperparámetro ``mtry`` y se selecciona el mejor valor mediante validación cruzada de 10 particiones.
 
 ```{r}
@@ -441,6 +442,7 @@ Como se ve, el modelo funciona bastante bien y, debido al ser un ensemble, no ex
 
 
 ### Visualizacion de la frontera de decisión
+
 Para representar las fronteras de decisión utilizaré, como el resto de mis compañeros, las variables ``Petal.Length`` y ``Petal.Width`` (discriminan más la población).
 
 
@@ -491,6 +493,7 @@ ggplot() +
 Observamos en este diagrama una clara diferencia entre el resto de modelos: las zonas son mucho más concretas. Esto se debe a que los árboles de decisión clasifican mediantes preguntas binarias, por ejemplo: Si Petal.Length < 2.5 entonces es setosa, si Petal.Width > 1.5 y Petal.Length > 2.5 entonces es virgínica, etc. De esta forma obtenemos unas fronteras de decisión muy exactas. Sin embargo, debido a que la frontera entre virgínica y versicolor es muy difusa (la frontera es mucho más irregular), se dan los errores de clasificación que observamos en el test.
 
 ### Análisis de resultados
+
 En general, se observa que Random Forest produce muy buenos resultados para el problema de clasificación. Posee una matriz de confusión perfecta para entrenamiento y una muy buena para test. Además, la base teórica de la que se deduce imposibilidad de sobreajuste puede permitirnos aumentar el número de árboles sin miedo alguno, pudiendo mejorar el modelo aún más. Sin embargo, si bien es cierto que en este problema tenemos pocas características y, por tanto, la creación de árboles es mucho más rápida, en problemas de clasificación en los que hay cientos de características, la creación de los árboles puede suponer un gran coste temporal, por lo que cabría razonar la idea de perder precisión de un modelo a cambio de ganar en optimización.
 
 
@@ -556,6 +559,7 @@ ggplot(mod_knn) +
        y = "Exactitud por validación cruzada") +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"))
 ```
+
 Confirmamos visualmente lo devuelto por el proceso de validación cruzada, siendo el número óptimo de vecinos de $k=$ `r mod_knn$bestTune$k`
 
 ### Evaluación del modelo
@@ -605,6 +609,7 @@ ggplot(data = cm_knn_test_data, aes(x = Reference, y = Prediction, fill = Freq))
        fill = "Frecuencia") +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"))
 ```
+
 Las matrices de confusión muestran que el modelo KNN obtiene un rendimiento bastante bueno tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 116 de las 120 observaciones, lo que supone una precisión aproximada del 96.7%. En el conjunto de test clasifica correctamente 28 de las 30 observaciones, con una precisión aproximada del 93.3%.
 
 La clase setosa se identifica perfectamente en ambos conjuntos, lo cual era esperable porque suele estar claramente separada de las otras especies. Los errores aparecen únicamente entre versicolor y virginica, que son las dos clases más parecidas entre sí según las variables medidas. En test, las dos observaciones mal clasificadas corresponden a flores virginica que el modelo predice como versicolor.
@@ -657,6 +662,7 @@ ggplot() +
        y = "Ancho del pétalo (cm)") +
   theme(plot.title = element_text(face = "bold"))
 ```
+
 Se observa que la especie setosa queda claramente separada de las otras dos, ya que sus pétalos son mucho más cortos y estrechos. Por eso el modelo no comete errores con esta clase. En cambio, las clases versicolor y virginica aparecen más próximas entre sí, especialmente en la zona intermedia de longitud y ancho del pétalo. Esto explica que los errores de clasificación se produzcan únicamente entre estas dos especies.
 
 ### Análisis de los resultados
@@ -958,6 +964,7 @@ ggplot() +
        y = "Ancho del pétalo (cm)") +
   theme(plot.title = element_text(face = "bold"))
 ```
+
 La frontera de decisión muestra cómo Gradient Boosting divide el espacio de características mediante particiones sucesivas generadas por los árboles de decisión. Se observa una separación clara de la especie setosa, mientras que las regiones correspondientes a versicolor y virginica presentan una zona de transición más compleja. Esta estructura refleja la capacidad del modelo para capturar relaciones no lineales y adaptar la clasificación a la distribución de los datos.
 
 ### Análisis de los resultados
@@ -1009,6 +1016,7 @@ mod_nnet <- train(
 mod_nnet$bestTune
 
 ```
+
 Para comprender mejor cómo el modelo procesa la información y abrir la "caja negra" del algoritmo, visualizamos la topología final de la red. Cada línea representa un peso sináptico $w_{ij}$. El grosor y color de estas conexiones nos indica qué mediciones de la flor están activando con mayor intensidad las neuronas de la capa oculta, actuando como extractoras de características geométricas.
 
 ```{r}
@@ -1087,6 +1095,55 @@ El modelo muestra una dificultad mínima en la distinción entre versicolor y vi
 
 # 4. Discusión y Conclusiones
 
+```{r}
+# Predicciones en entrenamiento faltantes (SVM y Red Neuronal)
+pred_svm_train <- predict(mod_svm, newdata = trainData)
+cm_svm_train <- confusionMatrix(pred_svm_train, trainData$Species)
+
+pred_nnet_train <- predict(mod_nnet, newdata = trainData)
+cm_nnet_train <- confusionMatrix(pred_nnet_train, trainData$Species)
+
+# Creación del Data Frame con las métricas
+resultados_modelos <- data.frame(
+  Modelo = c(
+    "Regresión Logística", 
+    "Random Forest", 
+    "K-Nearest Neighbors (KNN)", 
+    "SVM (Kernel Radial)", 
+    "Gradient Boosting", 
+    "Red Neuronal (MLP)"
+  ),
+  Accuracy_Train = c(
+    cm_logit_train$overall['Accuracy'],
+    cm_rf_train$overall['Accuracy'],
+    cm_knn_train$overall['Accuracy'],
+    cm_svm_train$overall['Accuracy'],
+    cm_gbm_train$overall['Accuracy'],
+    cm_nnet_train$overall['Accuracy']
+  ),
+  Accuracy_Test = c(
+    cm_logit_test$overall['Accuracy'],
+    cm_rf_test$overall['Accuracy'],
+    cm_knn_test$overall['Accuracy'],
+    cm_svm$overall['Accuracy'], # En tu código se llamaba cm_svm
+    cm_gbm_test$overall['Accuracy'],
+    cm_nnet$overall['Accuracy'] # En tu código se llamaba cm_nnet
+  )
+)
+
+# Formatear los números
+resultados_modelos$Accuracy_Train <- paste0(round(resultados_modelos$Accuracy_Train * 100, 2), "%")
+resultados_modelos$Accuracy_Test <- paste0(round(resultados_modelos$Accuracy_Test * 100, 2), "%")
+
+# Generar la tabla
+knitr::kable(
+  resultados_modelos, 
+  align = "lcc", 
+  col.names = c("Modelo Algorítmico", "Exactitud (Entrenamiento)", "Exactitud (Test)"),
+  caption = "Comparativa del rendimiento global de los modelos de clasificación"
+)
+```
+
 Después de aplicar y evaluar seis modelos distintos de clasificación sobre el dataset `iris`, hemos comprobado que separar la especie *setosa* no supone ningún problema para ninguno de los algoritmos, ya que sus medidas están muy alejadas del resto. El verdadero reto analítico del trabajo ha sido trazar la frontera entre *versicolor* y *virginica*, ya que sus características geométricas se solapan bastante.
 
 Al comparar cómo cada modelo afronta este problema, hemos visto enfoques muy distintos que llegan a resultados similares:
@@ -1099,3 +1156,4 @@ Al comparar cómo cada modelo afronta este problema, hemos visto enfoques muy di
 A nivel de programación, desarrollar todo este análisis comparativo habría sido mucho más largo y propenso a errores sin el uso del paquete `caret`. Esta librería nos ha permitido unificar el preprocesamiento, la validación cruzada y las métricas de evaluación para modelos que por debajo usan paquetes muy diferentes (`nnet`, `kernlab`, `randomForest`, etc.). Esto nos garantiza que la comparación entre todos los algoritmos haya sido justa y en igualdad de condiciones.
 
 Como conclusión final, este trabajo nos demuestra que en un dataset de estas características, aplicar algoritmos muy complejos no supone una mejora drástica frente a los modelos clásicos. Aunque SVM o las Redes Neuronales tienen mucha más flexibilidad, opciones más sencillas como la Regresión Logística o KNN ofrecen resultados prácticamente idénticos. Por tanto, para este caso concreto, la mejor decisión sería optar por los modelos más simples, ya que su coste computacional es mucho menor y son más fáciles de interpretar.
+

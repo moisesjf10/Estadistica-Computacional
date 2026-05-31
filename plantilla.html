@@ -1807,6 +1807,54 @@ separabilidad lineal.</p>
 </div>
 <div id="discusión-y-conclusiones" class="section level1">
 <h1>4. Discusión y Conclusiones</h1>
+<p>Después de aplicar y evaluar seis modelos distintos de clasificación
+sobre el dataset <code>iris</code>, hemos comprobado que separar la
+especie <em>setosa</em> no supone ningún problema para ninguno de los
+algoritmos, ya que sus medidas están muy alejadas del resto. El
+verdadero reto analítico del trabajo ha sido trazar la frontera entre
+<em>versicolor</em> y <em>virginica</em>, ya que sus características
+geométricas se solapan bastante.</p>
+<p>Al comparar cómo cada modelo afronta este problema, hemos visto
+enfoques muy distintos que llegan a resultados similares:</p>
+<ul>
+<li><strong>La Regresión Logística Multinomial</strong> ha funcionado
+como un modelo base excelente. Aunque solo traza divisiones rectas, su
+alto porcentaje de acierto demuestra que a veces no hace falta un modelo
+extremadamente complejo para obtener buenos resultados.</li>
+<li><strong>Los métodos basados en distancias (KNN y SVM
+Radial)</strong> nos han obligado a escalar los datos previamente. KNN
+clasifica fijándose únicamente en los datos más cercanos, mientras que
+SVM (gracias al kernel radial) consigue adaptar una frontera curva muy
+suave justo en la zona donde las especies se mezclan.</li>
+<li><strong>Los modelos basados en árboles (Random Forest y Gradient
+Boosting)</strong> dividen el espacio con cortes rectos (formando una
+especie de escalera). Aunque operan de forma distinta —Random Forest
+hace la media de muchos árboles independientes y Gradient Boosting
+mejora los errores paso a paso—, ambos han dado resultados
+sobresalientes sin necesidad de escalar las variables geométricas.</li>
+<li>Por último, <strong>la Red Neuronal</strong> es el modelo con mayor
+capacidad para ajustarse a formas complejas. Sin embargo, hemos visto
+que gracias a la regularización que le aplicamos (<em>weight
+decay</em>), el modelo decidió trazar fronteras casi rectas, evitando
+sobreajustarse a los datos de entrenamiento para poder generalizar
+mejor.</li>
+</ul>
+<p>A nivel de programación, desarrollar todo este análisis comparativo
+habría sido mucho más largo y propenso a errores sin el uso del paquete
+<code>caret</code>. Esta librería nos ha permitido unificar el
+preprocesamiento, la validación cruzada y las métricas de evaluación
+para modelos que por debajo usan paquetes muy diferentes
+(<code>nnet</code>, <code>kernlab</code>, <code>randomForest</code>,
+etc.). Esto nos garantiza que la comparación entre todos los algoritmos
+haya sido justa y en igualdad de condiciones.</p>
+<p>Como conclusión final, este trabajo nos demuestra que en un dataset
+de estas características, aplicar algoritmos muy complejos no supone una
+mejora drástica frente a los modelos clásicos. Aunque SVM o las Redes
+Neuronales tienen mucha más flexibilidad, opciones más sencillas como la
+Regresión Logística o KNN ofrecen resultados prácticamente idénticos.
+Por tanto, para este caso concreto, la mejor decisión sería optar por
+los modelos más simples, ya que su coste computacional es mucho menor y
+son más fáciles de interpretar.</p>
 </div>
 
 

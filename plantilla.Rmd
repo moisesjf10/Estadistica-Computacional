@@ -10,64 +10,24 @@ header-includes:
   - \renewcommand{\contentsname}{Índice}
   - \usepackage{mathpazo}
   - \usepackage{titlesec}
-  - \renewcommand{\maketitle}{} 
+  - \renewcommand{\maketitle}{}
+  - \let\oldtableofcontents\tableofcontents
+  - \renewcommand{\tableofcontents}{\oldtableofcontents\newpage}
 output:
   pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
     highlight: tango
+    includes:
+      before_body: portada.tex
   html_document:
     toc: true
-    toc_float: true # Crea un menú lateral flotante para el índice en HTML
+    toc_float: true
     toc_depth: 3
     theme: readable
     highlight: tango
 ---
-
-\begin{titlepage}
-\centering
-
-\vspace*{0.5cm}
-
-\includegraphics[width=0.35\textwidth]{logo_ugr.png}
-
-\vspace{1.5cm}
-
-{\LARGE \textbf{Facultad de Ciencias} \par }
-
-\vspace{0.5cm}
-
-{\Large \textit{Grado en Matemáticas}\par}
-
-\vspace{1.5cm}
-
-{\Large Estadística Computacional\par}
-
-\vspace{1.5cm}
-
-{\large Trabajo en Grupo:\par}
-\vspace{0.3cm}
-{\LARGE \textbf{Modelos de Clasificación con el paquete CARET}\par}
-
-\vfill
-
-{\large \textbf{Autores:}\par}
-\vspace{0.5cm}
-
-{\large
-Moisés Jiménez Fernández \\[0.2cm]
-Pablo Martín Palomino \\[0.2cm]
-Natalia Yue Gallardo Pretel \\[0.2cm]
-Mario Líndez Martínez \\[0.2cm]
-Pablo Reyes Sousa \\[0.2cm]
-Diego Ortega Sánchez \par}
-
-\vfill
-
-{\large Curso 2025/26 \par}
-
-\end{titlepage}
-
-\tableofcontents
-\newpage
 
 
 
@@ -104,16 +64,21 @@ h1, h2, h3 {
 }
 </style>
 
+
+
 # 1. Introducción y Planteamiento del Problema
 
-El objetivo de este documento es abordar un problema clásico de clasificación desde la perspectiva del Aprendizaje Automático (*Machine Learning*), ilustrando cómo el ecosistema de R proporciona herramientas robustas y unificadas para la modelización predictiva. 
+En este trabajo estudiamos un problema clásico de clasificación supervisada utilizando el conjunto de datos ``iris``. El objetivo es predecir la especie de una flor a partir de cuatro medidas: longitud y anchura del sépalo, y longitud y anchura del pétalo.
 
-Para este estudio, utilizaremos el conjunto de datos `iris`. Este *dataset* multivariante contiene 150 observaciones correspondientes a tres especies de flores de la familia Iris (*Iris setosa*, *Iris versicolor* e *Iris virginica*). Para cada flor, se disponen de cuatro características morfológicas medidas en centímetros: la longitud y la anchura de los sépalos y pétalos.
+El dataset contiene 150 observaciones de tres especies: *Iris setosa*, *Iris versicolor* e *Iris virginica*. Por tanto, buscamos construir una regla de clasificación que asigne cada observación a una de las tres clases posibles. Matemáticamente, el problema puede expresarse como la aproximación de una función
 
-Desde un punto de vista matemático y computacional, nos enfrentamos a un problema de clasificación supervisada donde buscamos aproximar una función $f: \mathbb{R}^4 \to \{C_1, C_2, C_3\}$ que mapee las características geométricas al espacio de clases de las especies. 
+$$
+f: \mathbb{R}^4 \to {C_1, C_2, C_3},
+$$
 
-En lugar de depender de un único enfoque metodológico, esta *vignette* explora el uso del paquete `caret` (*Classification And Regression Training*). Este paquete actúa como una interfaz unificada que simplifica drásticamente el proceso de entrenamiento, ajuste de hiperparámetros y evaluación de múltiples modelos predictivos. A lo largo del documento, contrastaremos enfoques que van desde fronteras de decisión puramente lineales (Regresión Logística) hasta mapeos no lineales complejos (Redes Neuronales y Gradient Boosting), analizando su viabilidad, interpretabilidad y rendimiento empírico.
+donde la entrada está formada por las cuatro variables geométricas y la salida es la especie predicha.
 
+Para entrenar y comparar los modelos utilizaremos el paquete ``caret``, que permite aplicar una misma metodología de partición de datos, validación cruzada y evaluación. En particular, analizaremos varios algoritmos de clasificación, desde métodos sencillos como la regresión logística multinomial hasta modelos más flexibles como Random Forest, KNN, SVM, Gradient Boosting y redes neuronales.
 
 # 2. Preparación y Exploración de los Datos
 
@@ -134,6 +99,9 @@ knitr::opts_chunk$set(
 #install.packages("caret")
 library(caret)
 library(datasets)
+library(patchwork)
+library(ggplot2)
+library(GGally)
 
 # Cargar el dataset
 data(iris)
@@ -148,20 +116,16 @@ testData   <- iris[-trainIndex, ]
 
 ```
 
-Antes de modelar, es útil visualizar cómo se distribuyen las variables geométricas según la especie.
+Antes de entrenar los modelos, representamos las relaciones entre las variables para observar la separación entre especies.
 
 ```{r}
-library(ggplot2)
-#install.packages("GGally")
-library(GGally)
-
-# Matriz de dispersión detallada (pairwise scatter plots)
+# Matriz de dispersión detallada 
 ggpairs(iris, 
-        columns = 1:4,           # Solo las variables geométricas
-        aes(color = Species),    # Colorear por especie
-        upper = list(continuous = wrap("cor", size = 4)), # Correlación
-        lower = list(continuous = wrap("points", alpha = 0.6, size = 1.5)), # Dispersión
-        diag = list(continuous = wrap("densityDiag", alpha = 0.5))) + # Densidad
+        columns = 1:4,           
+        aes(color = Species),    
+        upper = list(continuous = wrap("cor", size = 4)), 
+        lower = list(continuous = wrap("points", alpha = 0.6, size = 1.5)), 
+        diag = list(continuous = wrap("densityDiag", alpha = 0.5))) + 
   theme_minimal() +
   labs(title = "Relaciones bidimensionales entre variables",
        subtitle = "Análisis de la distribución geométrica del dataset Iris") +
@@ -170,13 +134,32 @@ ggpairs(iris,
 
 # 3. Benchmarking: Entrenamiento y Evaluación de Modelos
 
+En esta sección se entrenan y comparan distintos modelos de clasificación usando la misma partición de datos. Para cada método se ajustan los hiperparámetros correspondientes, se realizan predicciones sobre entrenamiento y test, y se evalúa el rendimiento mediante matrices de confusión y exactitud.
+
+
+Definimsos la siguiente función para dibujar matrices de confusión en los distintos métodos.
+```{r}
+# Función modular para dibujar matrices de confusión
+plot_cm <- function(cm, model_name, type = "Entrenamiento") {
+  cm_data <- as.data.frame(cm$table)
+  ggplot(data = cm_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+    geom_tile() +
+    geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
+    scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
+    theme_minimal() +
+    labs(title = paste("Matriz de Confusión en", type, ":\n", model_name),
+         x = "Clase Real",
+         y = "Clase Predicha",
+         fill = "Frecuencia") +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+}
+```
+
 ## 3.1. Regresión Logística Multinomial
 
-La regresión logística multinomial es una extensión natural de la regresión logística binaria para abordar problemas de clasificación con más de dos categorías. En este caso, la variable de respuesta es `Species`, que puede tomar tres valores: `setosa`, `versicolor` y `virginica`, por lo que el modelo debe estimar la probabilidad de pertenencia a cada una de estas clases.
+La regresión logística multinomial extiende la regresión logística binaria a problemas de clasificación con más de dos categorías. En este caso, la variable de respuesta es `Species`, que puede tomar tres valores: `setosa`, `versicolor` y `virginica`.
 
-A diferencia de otros métodos más flexibles, la regresión logística multinomial construye fronteras de decisión lineales en el espacio de predictores. Para ello, combina linealmente las variables explicativas y transforma los resultados mediante la función `softmax`.
-
-De forma general, para una observación con vector de características $x$, la probabilidad de pertenecer a la clase $k$ se expresa como:
+El modelo estima, para cada observación, la probabilidad de pertenecer a cada clase. Para ello utiliza combinaciones lineales de las variables predictoras y las transforma mediante la función `softmax`:
 
 $$
 P(Y = k \mid X = x) =
@@ -185,12 +168,12 @@ P(Y = k \mid X = x) =
 \qquad k = 1,\ldots,K.
 $$
 
-En nuestro caso, $K = 3$, ya que existen tres especies posibles. El modelo asigna cada observación a la clase con mayor probabilidad estimada.
+Finalmente, cada observación se asigna a la clase con mayor probabilidad estimada. Al ser un modelo lineal, sus fronteras de decisión son sencillas e interpretables.
 
 
 ### Construcción y entrenamiento del modelo
 
-Para mantener la misma metodología común del documento, el modelo se ajusta mediante la función `train()` de `caret`, utilizando el método `"multinom"` y una malla de valores para el parámetro de regularización `decay`.
+El modelo se ajusta mediante la función `train()` de `caret`, usando el método `"multinom"` y probando distitnos valores del parámetro de regularización `decay`.
 
 
 ```{r}
@@ -212,44 +195,23 @@ mod_logit <- train(
 
 # Hiperparámetro óptimo seleccionado por validación cruzada
 mod_logit$bestTune
-
-# Resumen del modelo final
-#summary(mod_logit$finalModel)
-
 ```
 
 
 ### Evaluación del modelo
 
-Una vez entrenado el modelo, se realizan predicciones tanto sobre el conjunto de entrenamiento como sobre el conjunto de test. La evaluación en entrenamiento permite analizar el grado de ajuste del modelo a los datos utilizados durante la estimación de los parámetros. Sin embargo, esta medida puede ser optimista, ya que el modelo ya ha visto esas observaciones.
+Evaluamos el modelo tanto en entrenamiento como en test para comprobar su ajuste y su capacidad de generalización.
 
-Por ello, se complementa con la evaluación sobre el conjunto de test, formado por observaciones no utilizadas durante el entrenamiento. La comparación entre ambas matrices de confusión permite detectar posibles indicios de sobreajuste: si el rendimiento en entrenamiento fuera muy superior al obtenido en test, podría indicar que el modelo se ha ajustado demasiado a los datos de entrenamiento. En cambio, resultados similares en ambos conjuntos sugieren una buena capacidad de generalización.
-```{r}
+```{r fig.width=10, fig.height=4.5}
+
 # Predicción sobre el conjunto de entrenamiento
 pred_logit_train <- predict(mod_logit, newdata = trainData)
 
 # Matriz de confusión sobre entrenamiento
 cm_logit_train <- confusionMatrix(pred_logit_train, trainData$Species)
 
-# Mostrar resultados de entrenamiento
-#cm_logit_train
-
-# Función modular para dibujar matrices de confusión
-plot_cm <- function(cm, model_name, type = "Entrenamiento") {
-  cm_data <- as.data.frame(cm$table)
-  ggplot(data = cm_data, aes(x = Reference, y = Prediction, fill = Freq)) +
-    geom_tile() +
-    geom_text(aes(label = Freq), vjust = 1, color = "white", fontface = "bold") +
-    scale_fill_gradient(low = "#a8dadc", high = "#1d3557") +
-    theme_minimal() +
-    labs(title = paste("Matriz de Confusión en", type, ":", model_name),
-         x = "Clase Real",
-         y = "Clase Predicha",
-         fill = "Frecuencia") +
-    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
-}
-
-plot_cm(cm_logit_train, "Regresión Logística", "Entrenamiento")
+# Guardamos el gráfico de entrenamiento en una variable
+p_train <- plot_cm(cm_logit_train, "Regresión Logística", "Entrenamiento")
 
 
 # Predicción sobre el conjunto de test
@@ -258,78 +220,31 @@ pred_logit_test <- predict(mod_logit, newdata = testData)
 # Matriz de confusión sobre test
 cm_logit_test <- confusionMatrix(pred_logit_test, testData$Species)
 
-# Mostrar resultados de test
-#cm_logit_test
+# Guardamos el gráfico de test en una variable
+p_test <- plot_cm(cm_logit_test, "Regresión Logística", "Test")
 
-plot_cm(cm_logit_test, "Regresión Logística", "Test")
+
+# Unimos ambos gráficos lado a lado usando patchwork
+p_train + p_test
 ```
 
-<!--
-### Visualización de la frontera de decisión
-
-El modelo principal de regresión logística multinomial se entrena utilizando las cuatro variables predictoras del dataset. Sin embargo, para visualizar la frontera de decisión se ajusta un modelo auxiliar bidimensional empleando únicamente ``Petal.Length`` y ``Petal.Width``. Esta elección se justifica a partir del análisis exploratorio previo, donde se observa que las variables relacionadas con el pétalo presentan una mayor capacidad discriminante entre especies que las variables del sépalo. En particular, la matriz de dispersión muestra una separación clara de la especie setosa y una diferenciación razonable entre versicolor y virginica en el plano formado por Petal.Length y Petal.Width. Además, ambas variables presentan una correlación elevada, lo que indica que concentran gran parte de la estructura geométrica relevante para la clasificación.
-
-
-```{r}
-set.seed(123)
-
-# Dataset reducido a dos variables predictoras
-iris_2d_logit <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
-
-# Entrenamiento del modelo bidimensional
-mod_logit_2d <- train(
-  Species ~ .,
-  data = iris_2d_logit,
-  method = "multinom",
-  trace = FALSE
-)
-
-# Creación de una malla de puntos sobre el plano bidimensional
-grid_logit <- expand.grid(
-  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out = 150),
-  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out = 150)
-)
-
-# Predicción de la clase para cada punto de la malla
-grid_logit$Species <- predict(mod_logit_2d, newdata = grid_logit)
-
-# Visualización de la frontera de decisión
-ggplot() +
-  geom_tile(data = grid_logit,
-            aes(x = Petal.Length, y = Petal.Width, fill = Species),
-            alpha = 0.3) +
-  geom_point(data = iris_2d_logit,
-             aes(x = Petal.Length, y = Petal.Width, color = Species),
-             size = 2.5) +
-  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
-  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
-  theme_minimal() +
-  labs(title = "Frontera de decisión de la Regresión Logística Multinomial",
-       subtitle = "Proyección lineal sobre Petal.Length vs Petal.Width",
-       x = "Longitud del pétalo (cm)",
-       y = "Ancho del pétalo (cm)") +
-  theme(plot.title = element_text(face = "bold"))
-```
--->
 ### Análisis de los resultados
 
-Los resultados muestran que la regresión logística multinomial obtiene un rendimiento muy alto tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 118 de las 120 observaciones, alcanzando una exactitud aproximada del 98,33%. Los únicos errores corresponden a 2 observaciones reales de `versicolor` que son clasificadas como `virginica`.
+La regresión logística multinomial obtiene un rendimiento alto tanto en entrenamiento como en test. La especie `setosa` se clasifica correctamente en todos los casos, mientras que los errores aparecen únicamente entre `versicolor` y `virginica`, que son las dos clases con mayor solapamiento en las variables del pétalo.
 
-En el conjunto de test, el modelo mantiene una exactitud elevada, con 29 aciertos sobre 30 observaciones, es decir, un 96,67%. El único error se produce entre las especies `virginica` y `versicolor`, lo que resulta coherente con el mayor solapamiento morfológico entre ambas clases. En cambio, la especie `setosa` se clasifica correctamente en todos los casos, debido a su clara separación respecto al resto.
+La diferencia entre el rendimiento en entrenamiento y en test es pequeña, por lo que no se aprecian indicios claros de sobreajuste. En este problema, una frontera lineal resulta suficiente para separar razonablemente bien las tres especies
 
-La comparación entre entrenamiento y test no muestra indicios claros de sobreajuste, ya que la diferencia de rendimiento entre ambos conjuntos es pequeña. Esto sugiere que el modelo generaliza adecuadamente sobre observaciones no vistas.
 
-La frontera de decisión bidimensional confirma esta interpretación. En el plano formado por `Petal.Length` y `Petal.Width`, la región de `setosa` aparece claramente separada, mientras que `versicolor` y `virginica` se sitúan en zonas más próximas. Además, la forma aproximadamente lineal de las fronteras refleja la naturaleza del modelo. A pesar de su simplicidad, la regresión logística multinomial consigue una clasificación muy precisa, por lo que constituye un modelo base sólido, interpretable y computacionalmente eficiente para este problema.
 
 
 ## 3.2 Random Forest 
 
-El método de random forest es un método ensemble basado en el entrenamiento de un gran número de árboles de decisión independientes (en tarea de clasificación) utilizando diferentes muestras aleatorias sacadas con reemplazo y el bosque devuelve la característica más votada (la moda) de entre todos los árboles.
+Random forest es un método ``ensemble`` que combina un gran número de árboles de decisión independientes. Cada árbol se entrena con una muestra aleatoria del conjunto de entrenamiento y, en clasificación, la predicción final se obtiene por voto mayoritario.
 
-A la hora de crear un árbol de decisión, lo normal es coger la variable que permite diferenciar mejor las instancias de las clases. Sin embargo, si utilizamos esta perspectiva para crear los diferentes árboles del bosque, se heredarían los errores obtenidos utilizando esta forma de división. Por esta razón, random forest incluye un hiperparámetro: el número de características a tener en cuenta en cada árbol, las cuales se eligirán de forma aleatoria a la hora de construir los árboles. A este parámetro lo llamaremos ``mtry`` y, como el dataset tiene 4 características, $mtry \in \{1,2,3,4\}$.
+Además, en cada división de un árbol no se consideran todas las variables, sino solo un subconjunto aleatorio de ellas. Este número de variables se controla mediante el hiperparámetro ``mtry`` . En nuestro caso, como el dataset tiene cuatro variables predictoras, probamos los valores $mtry \in {1,2,3,4}$.
 
 
-Una vez creado un bosque con $S$ árboles, dada una nueva instancia $x$, el método ejecuta la entrada en cada uno de los árboles $\hat{f_i}(x)$ y devuelve el valor más frecuente. Es decir:
+Si el bosque tiene $S$ árboles, la predicción para una nueva observación $x$ puede escribirse como:
 
 
 $$
@@ -345,7 +260,7 @@ Uno podría pensar que el parámetro $S$ (número de árboles del bosque) es otr
 
 ### Construcción y entrenamiento del modelo
 
-Para entrenar el modelo se usa ``train`` del paquete Caret utilizando como parámetro ``method = "rf"``. Se define una malla de valores para el hiperparámetro ``mtry`` y se selecciona el mejor valor mediante validación cruzada de 10 particiones.
+Entrenamos el modelo con ``train()`` del paquete ``Caret`` usando como parámetro ``method = "rf"``.El valor de  ``mtry`` se selecciona mediante validación cruzada de 10 particiones.
 
 ```{r}
 set.seed(123)
@@ -376,29 +291,28 @@ print(paste("Valor óptimo de mtry seleccionado: ", mod_rf$bestTune))
 
 ### Evaluación del modelo
 
-Al igual que en los modelos anteriores, evaluamos el rendimiento tanto sobre el conjunto de entrenamiento como sobre el conjunto de test.
+Evaluamos el rendimiento del modelo en entrenamiento y en test.
 
-```{r}
+```{r fig.width=10, fig.height=4.5}
 # Predicción entrenamiento
 pred_rf_train <- predict(mod_rf, newdata = trainData)
 
 # Matriz de confusión de entrenamiento
 cm_rf_train <- confusionMatrix(pred_rf_train, trainData$Species)
+p_train <- plot_cm(cm_rf_train, "Random Forest", "Entrenamiento")
 
-plot_cm(cm_rf_train, "Random Forest", "Entrenamiento")
-```
-
-
-```{r}
 # Predicción test
 pred_rf_test <- predict(mod_rf, newdata = testData)
 
-
 # Matriz de confusión de test
 cm_rf_test <- confusionMatrix(pred_rf_test, testData$Species)
-plot_cm(cm_rf_test, "Random Forest", "Test")
+p_test  <- plot_cm(cm_rf_test, "Random Forest", "Test")
+
+p_train + p_test
+
 ```
 
+### Comentario de resultados
 
 Las matrices de confusión muestran que el modelo de Random Forest tuvo un rendimiento perfecto en entrenamiento y uno bastante bueno en test. La precisión en entrenamiento es del 100% mientras que en test acertó 28 de las 30 muestras, con una precisión del 93.3%.
 
@@ -406,59 +320,6 @@ La clase setosa es perfectamente separada (se puede observar que es la diferente
 
 Como se ve, el modelo funciona bastante bien y, debido al ser un ensemble, no existe preocupación por posibles sobreajustes.
 
-<!--
-### Visualizacion de la frontera de decisión
-
-Para representar las fronteras de decisión utilizaré, como el resto de mis compañeros, las variables ``Petal.Length`` y ``Petal.Width`` (discriminan más la población).
-
-
-```{r}
-set.seed(123)
-
-# Dataset reducido a dos variables predictoras
-iris_2d_rf <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
-
-mod_rf_2d<-train(
-  Species ~ .,
-  data=iris_2d_rf,
-  method="rf",
-  tuneGrid=data.frame(mtry=mod_rf$bestTune$mtry),
-  trControl =trainControl(method="none")
-)
-
-#Creación de una malla de puntos sobre el plano bidimensional
-grid_rf <- expand.grid(
-  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out=150),
-  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out=150)
-)
-
-
-#Predicción de la clase para cada punto de la malla
-grid_rf$Species <- predict(mod_rf_2d, newdata = grid_rf)
-
-
-#Visualizacióndelafronteradedecisión
-ggplot() +
-  geom_tile(data = grid_rf,
-            aes(x=Petal.Length, y=Petal.Width, fill = Species),
-            alpha = 0.3) +
-  geom_point(data = iris_2d_rf, 
-             aes(x = Petal.Length, y = Petal.Width, color = Species),
-             size = 2.5) +
-  scale_fill_manual(values=c("#F8766D", "#00BA38", "#619CFF")) +
-  scale_color_manual(values=c("#F8766D", "#00BA38", "#619CFF")) +
-  theme_minimal() +
-  labs(title="Frontera de decisión de Random Forest",
-       subtitle = "Proyección sobre Petal.Length vs Petal.Width",
-       x = "Longitud del pétalo (cm)",
-       y = "Ancho del pétalo (cm)") +
-  theme(plot.title = element_text(face = "bold"))
-```
-
-
-Observamos en este diagrama una clara diferencia entre el resto de modelos: las zonas son mucho más concretas. Esto se debe a que los árboles de decisión clasifican mediantes preguntas binarias, por ejemplo: Si Petal.Length < 2.5 entonces es setosa, si Petal.Width > 1.5 y Petal.Length > 2.5 entonces es virgínica, etc. De esta forma obtenemos unas fronteras de decisión muy exactas. Sin embargo, debido a que la frontera entre virgínica y versicolor es muy difusa (la frontera es mucho más irregular), se dan los errores de clasificación que observamos en el test.
-
--->
 
 ### Análisis de resultados
 
@@ -534,22 +395,20 @@ Confirmamos visualmente lo devuelto por el proceso de validación cruzada, siend
 
 Al igual que en los modelos anteriores, evaluamos el rendimiento tanto sobre el conjunto de entrenamiento como sobre el conjunto de test. La evaluación en entrenamiento permite detectar si el modelo se ajusta demasiado a los datos utilizados para construirlo, mientras que el conjunto de test proporciona una estimación de su capacidad de generalización.
 
-```{r}
+```{r fig.width=10, fig.height=4.5}
 # Predicción sobre el conjunto de entrenamiento
 pred_knn_train <- predict(mod_knn, newdata = trainData)
-
-# Matriz de confusión sobre entrenamiento
 cm_knn_train <- confusionMatrix(pred_knn_train, trainData$Species)
-
-plot_cm(cm_knn_train, "KNN", "Entrenamiento")
 
 # Predicción sobre el conjunto de test
 pred_knn_test <- predict(mod_knn, newdata = testData)
-
-# Matriz de confusión sobre test
 cm_knn_test <- confusionMatrix(pred_knn_test, testData$Species)
 
-plot_cm(cm_knn_test, "KNN", "Test")
+# Representación conjunta de las matrices de confusión
+p_train <- plot_cm(cm_knn_train, "KNN", "Entrenamiento")
+p_test  <- plot_cm(cm_knn_test, "KNN", "Test")
+
+p_train + p_test
 ```
 
 Las matrices de confusión muestran que el modelo KNN obtiene un rendimiento bastante bueno tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 116 de las 120 observaciones, lo que supone una precisión aproximada del 96.7%. En el conjunto de test clasifica correctamente 28 de las 30 observaciones, con una precisión aproximada del 93.3%.
@@ -559,57 +418,7 @@ La clase setosa se identifica perfectamente en ambos conjuntos, lo cual era espe
 En general, los resultados indican que KNN funciona bien para este problema. Además, como el rendimiento en test es similar al de entrenamiento, no parece haber un sobreajuste importante.
 
 
-<!--
 
-### Visualización de la frontera de decisión
-
-El modelo principal KNN se entrena utilizando las cuatro variables predictoras del conjunto de datos. Sin embargo, para poder visualizar la frontera de decisión, ajustamos un modelo auxiliar bidimensional utilizando únicamente `Petal.Length` y `Petal.Width`, las dos variables que poseen una mayor capacidad discriminante. Cabe destacar que esta representación no sustituye al modelo completo, sino que permite interpretar gráficamente cómo se separan las especies en el plano de las variables del pétalo.
-
-```{r}
-set.seed(123)
-
-# Dataset reducido a dos variables predictoras
-iris_2d_knn <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
-
-# Entrenamiento del modelo KNN bidimensional usando el k óptimo del modelo completo
-mod_knn_2d <- train(
-  Species ~ .,
-  data = iris_2d_knn,
-  method = "knn",
-  preProcess = c("center", "scale"),
-  tuneGrid = data.frame(k = mod_knn$bestTune$k),
-  trControl = trainControl(method = "none")
-)
-
-# Creación de una malla de puntos sobre el plano bidimensional
-grid_knn <- expand.grid(
-  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out = 150),
-  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out = 150)
-)
-
-# Predicción de la clase para cada punto de la malla
-grid_knn$Species <- predict(mod_knn_2d, newdata = grid_knn)
-
-# Visualización de la frontera de decisión
-ggplot() +
-  geom_tile(data = grid_knn,
-            aes(x = Petal.Length, y = Petal.Width, fill = Species),
-            alpha = 0.3) +
-  geom_point(data = iris_2d_knn,
-             aes(x = Petal.Length, y = Petal.Width, color = Species),
-             size = 2.5) +
-  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
-  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
-  theme_minimal() +
-  labs(title = "Frontera de decisión de KNN",
-       subtitle = "Proyección sobre Petal.Length vs Petal.Width",
-       x = "Longitud del pétalo (cm)",
-       y = "Ancho del pétalo (cm)") +
-  theme(plot.title = element_text(face = "bold"))
-```
-
-Se observa que la especie setosa queda claramente separada de las otras dos, ya que sus pétalos son mucho más cortos y estrechos. Por eso el modelo no comete errores con esta clase. En cambio, las clases versicolor y virginica aparecen más próximas entre sí, especialmente en la zona intermedia de longitud y ancho del pétalo. Esto explica que los errores de clasificación se produzcan únicamente entre estas dos especies.
--->
 
 ### Análisis de los resultados
 En conjunto, los resultados muestran que KNN funciona bien para el problema de clasificación del conjunto de datos `iris`. Las matrices de confusión muestran una exactitud alta tanto en entrenamiento, 96.67%, como en test, 93.33%. Además, al ser ambos valores similares, no parece haber un sobreajuste importante. no parece haber un sobreajuste importante, por lo que el modelo obtiene una frontera de decisión suficientemente flexible, pero sin depender en exceso de puntos individuales.
@@ -665,67 +474,30 @@ mod_svm$bestTune
 
 Una vez ajustados los hiperparámetros óptimos, procedemos a evaluar el modelo sobre nuestro conjunto de test del 20% reservado inicialmente.
 
-```{r}
-# Predicción sobre los datos de test
-pred_svm <- predict(mod_svm, newdata = testData)
+```{r fig.width=10, fig.height=4.5}
+# Predicción sobre el conjunto de entrenamiento
+pred_svm_train <- predict(mod_svm, newdata = trainData)
+cm_svm_train <- confusionMatrix(pred_svm_train, trainData$Species)
 
-# Generación de la matriz de confusión
-cm_svm <- confusionMatrix(pred_svm, testData$Species)
+# Predicción sobre el conjunto de test
+pred_svm_test <- predict(mod_svm, newdata = testData)
+cm_svm_test <- confusionMatrix(pred_svm_test, testData$Species)
 
-plot_cm(cm_svm, "SVM", "Test")
+# Representación conjunta de las matrices de confusión
+p_train <- plot_cm(cm_svm_train, "SVM", "Entrenamiento")
+p_test  <- plot_cm(cm_svm_test, "SVM", "Test")
+
+p_train + p_test
 ```
 
 
-<!--
 
-### Visualización de la frontera de decisión
-Para poder comparar visualmente la flexibilidad del kernel radial frente a las fronteras más rígidas de la regresión logística, entrenaremos un modelo SVM auxiliar limitando el conjunto de datos a las dos variables más representativas: Petal.Length y Petal.Width.
-
-```{r}
-set.seed(123)
-
-# Dataset reducido a las dos dimensiones del pétalo
-iris_2d_svm <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
-
-# Entrenamiento del modelo SVM bidimensional
-mod_svm_2d <- train(
-  Species ~ ., 
-  data = iris_2d_svm, 
-  method = "svmRadial", 
-  preProcess = c("center", "scale"),
-  tuneGrid = expand.grid(sigma = mod_svm$bestTune$sigma, C = mod_svm$bestTune$C)
-)
-
-# Creación de la malla de puntos espaciales
-grid_svm <- expand.grid(
-  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out = 150),
-  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out = 150)
-)
-
-# Predicción de la clase para cada punto en el espacio 2D
-grid_svm$Species <- predict(mod_svm_2d, newdata = grid_svm)
-
-# Dibujamos la frontera de decisión no lineal
-ggplot() +
-  geom_tile(data = grid_svm, aes(x = Petal.Length, y = Petal.Width, fill = Species), alpha = 0.3) +
-  geom_point(data = iris_2d_svm, aes(x = Petal.Length, y = Petal.Width, color = Species), 
-             size = 2.5, edgecolor = "black") +
-  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
-  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
-  theme_minimal() +
-  labs(title = "Frontera de decisión de SVM (Kernel Radial)",
-       subtitle = "Proyección no lineal sobre Petal.Length vs Petal.Width",
-       x = "Longitud del pétalo (cm)",
-       y = "Ancho del pétalo (cm)") +
-  theme(plot.title = element_text(face = "bold"))
-```
--->
 
 ### Análisis de los resultados
 
 La Máquina de Vector de Soporte con kernel radial exhibe un rendimiento sobresaliente, alineándose con las métricas observadas en los modelos anteriores. Como era de esperar, la clase setosa se clasifica perfectamente debido a su aislamiento espacial.El aspecto más destacable se observa en el gráfico de la frontera de decisión: a diferencia de la Regresión Logística, cuyas divisiones son estrictamente rectas, el kernel RBF permite que las fronteras se "doblen" de forma no lineal para encapsular la región de solapamiento entre las especies versicolor y virginica. Al haber optimizado los parámetros $C$ y $\sigma$, la frontera resultante traza un límite suave y natural entre ambas especies, encontrando un equilibrio idóneo entre el ajuste a los datos de entrenamiento y la capacidad de generalización sin incurrir en un sobreajuste evidente de la frontera hacia puntos ruidosos aislados.
 
-<!--
+
 ## 3.5. Gradient Boosting 
 
 Gradient Boosting es un método basado en la combinación secuencial de múltiples árboles de decisión poco profundos en general. La idea consiste en construir una sucesión de modelos simples donde cada nuevo árbol intenta corregir los errores cometidos por el conjunto de árboles previamente entrenados.
@@ -784,22 +556,20 @@ mod_gbm$bestTune
 
 Una vez seleccionada la combinación óptima de hiperparámetros mediante validación cruzada, procedemos a evaluar el rendimiento del modelo tanto sobre el conjunto de entrenamiento como sobre el conjunto de test. Esta comparación permitirá analizar la capacidad de generalización del modelo y detectar posibles indicios de sobreajuste.
 
-```{r}
+```{r fig.width=10, fig.height=4.5}
 # Predicción sobre el conjunto de entrenamiento
 pred_gbm_train <- predict(mod_gbm, newdata = trainData)
-
-# Matriz de confusión sobre entrenamiento
 cm_gbm_train <- confusionMatrix(pred_gbm_train, trainData$Species)
-
-plot_cm(cm_gbm_train, "Gradient Boosting", "Entrenamiento")
 
 # Predicción sobre el conjunto de test
 pred_gbm_test <- predict(mod_gbm, newdata = testData)
-
-# Matriz de confusión sobre test
 cm_gbm_test <- confusionMatrix(pred_gbm_test, testData$Species)
 
-plot_cm(cm_gbm_test, "Gradient Boosting", "Test")
+# Representación conjunta de las matrices de confusión
+p_train <- plot_cm(cm_gbm_train, "Gradient Boosting", "Entrenamiento")
+p_test  <- plot_cm(cm_gbm_test, "Gradient Boosting", "Test")
+
+p_train + p_test
 ```
 
 Las matrices de confusión muestran que Gradient Boosting obtiene un rendimiento muy elevado sobre el conjunto de entrenamiento. El modelo clasifica correctamente 115 de las 120 observaciones, alcanzando una exactitud aproximada del 95,83%.
@@ -808,73 +578,8 @@ La especie `setosa` se identifica perfectamente en todos los casos, lo que refle
 
 Estos resultados indican que el modelo es capaz de capturar los patrones presentes en los datos de entrenamiento sin necesidad de recurrir a fronteras de decisión excesivamente complejas.
 
-<!--
 
-### Visualización de la frontera de decisión
 
-Al igual que en los modelos anteriores, el modelo principal de Gradient Boosting se entrena utilizando las cuatro variables predictoras disponibles. Sin embargo, para facilitar la interpretación visual de la frontera de decisión, construiremos un modelo auxiliar bidimensional empleando únicamente las variables `Petal.Length` y `Petal.Width`.
-
-Estas variables presentan una elevada capacidad discriminante entre las distintas especies de iris, tal y como se observó en el análisis exploratorio realizado anteriormente.
-
-```{r}
-set.seed(123)
-
-# Dataset reducido a dos variables predictoras
-iris_2d_gbm <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
-
-# Modelo auxiliar bidimensional
-mod_gbm_2d <- train(
-  Species ~ .,
-  data = iris_2d_gbm,
-  method = "gbm",
-  tuneGrid = expand.grid(
-    interaction.depth = mod_gbm$bestTune$interaction.depth,
-    n.trees = mod_gbm$bestTune$n.trees,
-    shrinkage = mod_gbm$bestTune$shrinkage,
-    n.minobsinnode = mod_gbm$bestTune$n.minobsinnode
-  ),
-  trControl = trainControl(method = "none"),
-  verbose = FALSE
-)
-
-# Malla de puntos
-grid_gbm <- expand.grid(
-  Petal.Length = seq(min(iris$Petal.Length),
-                     max(iris$Petal.Length),
-                     length.out = 150),
-  Petal.Width = seq(min(iris$Petal.Width),
-                    max(iris$Petal.Width),
-                    length.out = 150)
-)
-
-# Predicción sobre la malla
-grid_gbm$Species <- predict(mod_gbm_2d, newdata = grid_gbm)
-
-# Frontera de decisión
-ggplot() +
-  geom_tile(data = grid_gbm,
-            aes(x = Petal.Length,
-                y = Petal.Width,
-                fill = Species),
-            alpha = 0.3) +
-  geom_point(data = iris_2d_gbm,
-             aes(x = Petal.Length,
-                 y = Petal.Width,
-                 color = Species),
-             size = 2.5) +
-  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
-  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
-  theme_minimal() +
-  labs(title = "Frontera de decisión de Gradient Boosting",
-       subtitle = "Proyección sobre Petal.Length vs Petal.Width",
-       x = "Longitud del pétalo (cm)",
-       y = "Ancho del pétalo (cm)") +
-  theme(plot.title = element_text(face = "bold"))
-```
-
-La frontera de decisión muestra cómo Gradient Boosting divide el espacio de características mediante particiones sucesivas generadas por los árboles de decisión. Se observa una separación clara de la especie setosa, mientras que las regiones correspondientes a versicolor y virginica presentan una zona de transición más compleja. Esta estructura refleja la capacidad del modelo para capturar relaciones no lineales y adaptar la clasificación a la distribución de los datos.
--->
-<!--
 ### Análisis de los resultados
 
 Gradient Boosting obtiene un rendimiento muy elevado tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 115 de las 120 observaciones, alcanzando una exactitud del 95,83%. Por su parte, en el conjunto de test clasifica correctamente 28 de las 30 observaciones, lo que supone una exactitud del 93,33%.
@@ -934,62 +639,30 @@ plotnet(mod_nnet$finalModel, main = "Arquitectura del Perceptrón Multicapa")
 
 Una vez que `caret` ha determinado la arquitectura óptima, procedemos a evaluar el rendimiento de la red neuronal sobre el conjunto de test independiente.
 
-```{r}
-# Predicción sobre los datos de validación
-pred_nnet <- predict(mod_nnet, newdata = testData)
+```{r fig.width=10, fig.height=4.5}
+# Predicción sobre el conjunto de entrenamiento
+pred_nnet_train <- predict(mod_nnet, newdata = trainData)
+cm_nnet_train <- confusionMatrix(pred_nnet_train, trainData$Species)
 
-# Generación de la matriz de confusión
-cm_nnet <- confusionMatrix(pred_nnet, testData$Species)
-plot_cm(cm_nnet, "Red Neuronal", "Test")
+# Predicción sobre el conjunto de test
+pred_nnet_test <- predict(mod_nnet, newdata = testData)
+cm_nnet_test <- confusionMatrix(pred_nnet_test, testData$Species)
+
+# Representación conjunta de las matrices de confusión
+p_train <- plot_cm(cm_nnet_train, "Red Neuronal", "Entrenamiento")
+p_test  <- plot_cm(cm_nnet_test, "Red Neuronal", "Test")
+
+p_train + p_test
 
 ```
 
-<!--
 
-### Visualización de la frontera de decisión
-
-Para comprender a nivel espacial cómo la red neuronal fragmenta el espacio de características, hemos entrenado un modelo auxiliar proyectado exclusivamente sobre el plano definido por las dimensiones del pétalo, ya que el Análisis Exploratorio previo reveló que son las variables más discriminantes.
-
-```{r}
-set.seed(123)
-# Filtramos el dataset para quedarnos solo con 2 variables predictoras
-iris_2d <- trainData[, c("Petal.Length", "Petal.Width", "Species")]
-
-# Entrenamos un modelo simple bidimensional
-mod_2d <- train(Species ~ ., data = iris_2d, method = "nnet", 
-                trace = FALSE, preProcess = c("center", "scale"))
-
-# Creamos una malla de puntos finos sobre el espacio 2D
-grid <- expand.grid(
-  Petal.Length = seq(min(iris$Petal.Length), max(iris$Petal.Length), length.out = 150),
-  Petal.Width = seq(min(iris$Petal.Width), max(iris$Petal.Width), length.out = 150)
-)
-
-# Predecimos la clase para cada coordenada de la malla
-grid$Species <- predict(mod_2d, newdata = grid)
-
-# Dibujamos la frontera de decisión y superponemos los datos reales
-ggplot() +
-  geom_tile(data = grid, aes(x = Petal.Length, y = Petal.Width, fill = Species), alpha = 0.3) +
-  geom_point(data = iris_2d, aes(x = Petal.Length, y = Petal.Width, color = Species), 
-             size = 2.5, edgecolor = "black") +
-  scale_fill_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
-  scale_color_manual(values = c("#F8766D", "#00BA38", "#619CFF")) +
-  theme_minimal() +
-  labs(title = "Frontera de decisión de la Red Neuronal",
-       subtitle = "Proyección no lineal sobre Petal.Length vs Petal.Width",
-       x = "Longitud del pétalo (cm)",
-       y = "Ancho del pétalo (cm)") +
-  theme(plot.title = element_text(face = "bold"))
-```
--->
-<!--
 ### Análisis de los resultados
 
 La evaluación general de la red neuronal confirma una capacidad de clasificación excepcional. Observamos que el modelo logra una clasificación perfecta para la especie setosa, lo cual es consistente tanto en el mapa de calor como en la separación total que se evidencia en el gráfico de la frontera de decisión bidimensional.
 
 El modelo muestra una dificultad mínima en la distinción entre versicolor y virginica (un único error de clasificación en la matriz de confusión). Esto es teóricamente coherente dada la superposición natural de estas dos especies. Como demuestra el gráfico de proyección bidimensional, aunque la red neuronal tiene la capacidad teórica de generar fronteras no lineales, ha optado por trazar divisiones casi rectilíneas. Este fenómeno ilustra perfectamente el impacto del parámetro de regularización (weight decay): al penalizar los pesos grandes para evitar el sobreajuste, las funciones de activación operan en su régimen lineal. La red concluye que una frontera simple es la solución óptima y más generalizable para este subespacio 2D, evitando crear curvas innecesarias ante datos que ya presentan una clara separabilidad lineal.
--->
+
 # 4. Análisis Visual Comparativo de Fronteras de Decisión
 
 Para comprender a nivel espacial cómo cada algoritmo fragmenta el espacio de características, hemos entrenado modelos auxiliares bidimensionales utilizando exclusivamente `Petal.Length` y `Petal.Width`. 
@@ -1082,14 +755,6 @@ Al observar la cuadrícula de proyecciones bidimensionales generada, podemos apr
 # 5. Discusión y Conclusiones
 
 ```{r}
-# Predicciones en entrenamiento faltantes (SVM y Red Neuronal)
-pred_svm_train <- predict(mod_svm, newdata = trainData)
-cm_svm_train <- confusionMatrix(pred_svm_train, trainData$Species)
-
-pred_nnet_train <- predict(mod_nnet, newdata = trainData)
-cm_nnet_train <- confusionMatrix(pred_nnet_train, trainData$Species)
-
-# Creación del Data Frame con las métricas
 resultados_modelos <- data.frame(
   Modelo = c(
     "Regresión Logística", 
@@ -1100,33 +765,40 @@ resultados_modelos <- data.frame(
     "Red Neuronal (MLP)"
   ),
   Accuracy_Train = c(
-    cm_logit_train$overall['Accuracy'],
-    cm_rf_train$overall['Accuracy'],
-    cm_knn_train$overall['Accuracy'],
-    cm_svm_train$overall['Accuracy'],
-    cm_gbm_train$overall['Accuracy'],
-    cm_nnet_train$overall['Accuracy']
+    cm_logit_train$overall["Accuracy"],
+    cm_rf_train$overall["Accuracy"],
+    cm_knn_train$overall["Accuracy"],
+    cm_svm_train$overall["Accuracy"],
+    cm_gbm_train$overall["Accuracy"],
+    cm_nnet_train$overall["Accuracy"]
   ),
   Accuracy_Test = c(
-    cm_logit_test$overall['Accuracy'],
-    cm_rf_test$overall['Accuracy'],
-    cm_knn_test$overall['Accuracy'],
-    cm_svm$overall['Accuracy'], # En tu código se llamaba cm_svm
-    cm_gbm_test$overall['Accuracy'],
-    cm_nnet$overall['Accuracy'] # En tu código se llamaba cm_nnet
+    cm_logit_test$overall["Accuracy"],
+    cm_rf_test$overall["Accuracy"],
+    cm_knn_test$overall["Accuracy"],
+    cm_svm_test$overall["Accuracy"],
+    cm_gbm_test$overall["Accuracy"],
+    cm_nnet_test$overall["Accuracy"]
   )
 )
 
-# Formatear los números
-resultados_modelos$Accuracy_Train <- paste0(round(resultados_modelos$Accuracy_Train * 100, 2), "%")
-resultados_modelos$Accuracy_Test <- paste0(round(resultados_modelos$Accuracy_Test * 100, 2), "%")
+resultados_modelos$Accuracy_Train <- paste0(
+  round(resultados_modelos$Accuracy_Train * 100, 2), "%"
+)
 
-# Generar la tabla
+resultados_modelos$Accuracy_Test <- paste0(
+  round(resultados_modelos$Accuracy_Test * 100, 2), "%"
+)
+
 knitr::kable(
   resultados_modelos, 
   align = "lcc", 
-  col.names = c("Modelo Algorítmico", "Exactitud (Entrenamiento)", "Exactitud (Test)"),
-  caption = "Comparativa del rendimiento global de los modelos de clasificación"
+  col.names = c(
+    "Modelo",
+    "Exactitud entrenamiento",
+    "Exactitud test"
+  ),
+  caption = "Comparativa del rendimiento global de los modelos"
 )
 ```
 

@@ -73,7 +73,7 @@ En este trabajo estudiamos un problema clásico de clasificación supervisada ut
 El dataset contiene 150 observaciones de tres especies: *Iris setosa*, *Iris versicolor* e *Iris virginica*. Por tanto, buscamos construir una regla de clasificación que asigne cada observación a una de las tres clases posibles. Matemáticamente, el problema puede expresarse como la aproximación de una función
 
 $$
-f: \mathbb{R}^4 \to {C_1, C_2, C_3},
+f: \mathbb{R}^4 \to \{C_1, C_2, C_3\},
 $$
 
 donde la entrada está formada por las cuatro variables geométricas y la salida es la especie predicha.
@@ -137,7 +137,7 @@ ggpairs(iris,
 En esta sección se entrenan y comparan distintos modelos de clasificación usando la misma partición de datos. Para cada método se ajustan los hiperparámetros correspondientes, se realizan predicciones sobre entrenamiento y test, y se evalúa el rendimiento mediante matrices de confusión y exactitud.
 
 
-Definimsos la siguiente función para dibujar matrices de confusión en los distintos métodos.
+Definimos la siguiente función para dibujar matrices de confusión en los distintos métodos.
 ```{r}
 # Función modular para dibujar matrices de confusión
 plot_cm <- function(cm, model_name, type = "Entrenamiento") {
@@ -173,7 +173,7 @@ Finalmente, cada observación se asigna a la clase con mayor probabilidad estima
 
 ### Construcción y entrenamiento del modelo
 
-El modelo se ajusta mediante la función `train()` de `caret`, usando el método `"multinom"` y probando distitnos valores del parámetro de regularización `decay`.
+El modelo se ajusta mediante la función `train()` de `caret`, usando el método `"multinom"` y probando distintos valores del parámetro de regularización `decay`.
 
 
 ```{r}
@@ -230,10 +230,11 @@ p_train + p_test
 
 ### Análisis de los resultados
 
-La regresión logística multinomial obtiene un rendimiento alto tanto en entrenamiento como en test. La especie `setosa` se clasifica correctamente en todos los casos, mientras que los errores aparecen únicamente entre `versicolor` y `virginica`, que son las dos clases con mayor solapamiento en las variables del pétalo.
+La regresión logística multinomial obtiene un rendimiento alto tanto en entrenamiento como en test. En concreto, el modelo alcanza una exactitud del 98,33% en entrenamiento y del 96,67% en test, lo que confirma que mantiene un rendimiento muy estable sobre datos no vistos.
 
-La diferencia entre el rendimiento en entrenamiento y en test es pequeña, por lo que no se aprecian indicios claros de sobreajuste. En este problema, una frontera lineal resulta suficiente para separar razonablemente bien las tres especies
+La especie `setosa` se clasifica correctamente en todos los casos, mientras que los errores aparecen únicamente entre `versicolor` y `virginica`, que son las dos clases con mayor solapamiento en las variables del pétalo.
 
+La diferencia entre el rendimiento en entrenamiento y en test es pequeña, por lo que no se aprecian indicios claros de sobreajuste. En este problema, una frontera lineal resulta suficiente para separar razonablemente bien las tres especies.
 
 
 
@@ -241,7 +242,7 @@ La diferencia entre el rendimiento en entrenamiento y en test es pequeña, por l
 
 Random forest es un método ``ensemble`` que combina un gran número de árboles de decisión independientes. Cada árbol se entrena con una muestra aleatoria del conjunto de entrenamiento y, en clasificación, la predicción final se obtiene por voto mayoritario.
 
-Además, en cada división de un árbol no se consideran todas las variables, sino solo un subconjunto aleatorio de ellas. Este número de variables se controla mediante el hiperparámetro ``mtry`` . En nuestro caso, como el dataset tiene cuatro variables predictoras, probamos los valores $mtry \in {1,2,3,4}$.
+Además, en cada división de un árbol no se consideran todas las variables, sino solo un subconjunto aleatorio de ellas. Este número de variables se controla mediante el hiperparámetro ``mtry`` . En nuestro caso, como el dataset tiene cuatro variables predictoras, probamos los valores $mtry \in \{1,2,3,4\}$.
 
 
 Si el bosque tiene $S$ árboles, la predicción para una nueva observación $x$ puede escribirse como:
@@ -318,7 +319,7 @@ Las matrices de confusión muestran que el modelo de Random Forest tuvo un rendi
 
 La clase setosa es perfectamente separada (se puede observar que es la diferente en las observaciones geométricas) mientras que hay algo de confusión entre la clase virgínica y la versicolar, que hay un poco más de solapamiento en sus distribuciones.
 
-Como se ve, el modelo funciona bastante bien y, debido al ser un ensemble, no existe preocupación por posibles sobreajustes.
+Como se ve, el modelo funciona bastante bien y, al tratarse de un método ensemble, no existe preocupación por posibles sobreajustes.
 
 
 ### Análisis de resultados
@@ -495,7 +496,7 @@ p_train + p_test
 
 ### Análisis de los resultados
 
-La Máquina de Vector de Soporte con kernel radial exhibe un rendimiento sobresaliente, alineándose con las métricas observadas en los modelos anteriores. Como era de esperar, la clase setosa se clasifica perfectamente debido a su aislamiento espacial.El aspecto más destacable se observa en el gráfico de la frontera de decisión: a diferencia de la Regresión Logística, cuyas divisiones son estrictamente rectas, el kernel RBF permite que las fronteras se "doblen" de forma no lineal para encapsular la región de solapamiento entre las especies versicolor y virginica. Al haber optimizado los parámetros $C$ y $\sigma$, la frontera resultante traza un límite suave y natural entre ambas especies, encontrando un equilibrio idóneo entre el ajuste a los datos de entrenamiento y la capacidad de generalización sin incurrir en un sobreajuste evidente de la frontera hacia puntos ruidosos aislados.
+La Máquina de Vector de Soporte con kernel radial exhibe un rendimiento sobresaliente, alineándose con las métricas observadas en los modelos anteriores. Como era de esperar, la clase setosa se clasifica perfectamente debido a su aislamiento espacial. El aspecto más destacable se observa en el gráfico de la frontera de decisión: a diferencia de la Regresión Logística, cuyas divisiones son estrictamente rectas, el kernel RBF permite que las fronteras se "doblen" de forma no lineal para encapsular la región de solapamiento entre las especies versicolor y virginica. Al haber optimizado los parámetros $C$ y $\sigma$, la frontera resultante traza un límite suave y natural entre ambas especies, encontrando un equilibrio idóneo entre el ajuste a los datos de entrenamiento y la capacidad de generalización sin incurrir en un sobreajuste evidente de la frontera hacia puntos ruidosos aislados.
 
 
 ## 3.5. Gradient Boosting 
@@ -744,13 +745,8 @@ ggplot() +
 
 ```
 
-Al observar la cuadrícula de proyecciones bidimensionales generada, podemos apreciar claramente cómo la "filosofía" matemática base de cada algoritmo se traduce de forma visual en la manera de dividir el plano de características:
+En la figura se observa que cada modelo genera fronteras de decisión con formas distintas. La regresión logística produce separaciones casi lineales, mientras que los modelos basados en árboles generan fronteras escalonadas. KNN presenta regiones más irregulares, ya que depende directamente de los puntos más cercanos, y SVM radial permite fronteras curvas más suaves. Por último, la red neuronal obtiene una separación bastante simple, lo que indica que en este problema no es necesario un límite de decisión excesivamente complejo.
 
-* **Regresión Logística:** Como modelo paramétrico lineal, muestra fronteras estrictamente rectas, trazando cortes geométricos limpios. A pesar de carecer de la flexibilidad necesaria para curvarse alrededor de los datos, su acierto empírico demuestra que una separación lineal simple es notablemente efectiva para este problema.
-* **Modelos basados en Árboles (Random Forest y Gradient Boosting):** Ambos evidencian el comportamiento de partición recursiva. En lugar de líneas diagonales o curvas, generan fronteras ortogonales a los ejes (en forma de "escalera" o bloques). Mientras que Random Forest tiende a aislar subregiones más específicas (pudiendo bordear el ruido local), Gradient Boosting —gracias al control de la tasa de aprendizaje o *shrinkage*— presenta bloques y transiciones más uniformes.
-* **K-Nearest Neighbors (KNN):** Al ser un modelo basado puramente en distancias locales, proporciona regiones sumamente irregulares y adaptadas al enjambre de puntos más cercanos. Exhibe una topología muy flexible y fragmentada, guiada exclusivamente por la densidad de los clústeres en zonas de solapamiento.
-* **Máquinas de Vector de Soporte (SVM Radial):** El uso del *kernel trick* transforma las rígidas separaciones lineales en formas curvas y suaves. Logra "envolver" eficazmente la difusa zona de transición entre *versicolor* y *virginica*, encontrando un hiperplano de separación de margen máximo sin que las fronteras se desvirtúen intentando atrapar valores atípicos (*outliers*).
-* **Red Neuronal (MLP):** Resulta un caso de estudio muy interesante. Aunque la arquitectura del perceptrón multicapa posee la capacidad teórica para mapear límites altamente no lineales, la aplicación deliberada de la regularización (*weight decay*) restringe fuertemente su complejidad gráfica. El optimizador concluye que trazar divisiones casi rectilíneas es la solución más robusta y generalizable para evitar el sobreajuste en este espacio de dos dimensiones.
 
 # 5. Discusión y Conclusiones
 
@@ -804,14 +800,18 @@ knitr::kable(
 
 Después de aplicar y evaluar seis modelos distintos de clasificación sobre el dataset `iris`, hemos comprobado que separar la especie *setosa* no supone ningún problema para ninguno de los algoritmos, ya que sus medidas están muy alejadas del resto. El verdadero reto analítico del trabajo ha sido trazar la frontera entre *versicolor* y *virginica*, ya que sus características geométricas se solapan bastante.
 
-Al comparar cómo cada modelo afronta este problema, hemos visto enfoques muy distintos que llegan a resultados similares:
+Al observar las fronteras de decisión, se aprecian diferencias claras entre los modelos. Aunque todos trabajan sobre las mismas variables (`Petal.Length` y `Petal.Width`), cada algoritmo divide el plano de una forma distinta según su propia estructura.
 
-* **La Regresión Logística Multinomial** ha funcionado como un modelo base excelente. Aunque solo traza divisiones rectas, su alto porcentaje de acierto demuestra que a veces no hace falta un modelo extremadamente complejo para obtener buenos resultados.
-* **Los métodos basados en distancias (KNN y SVM Radial)** nos han obligado a escalar los datos previamente. KNN clasifica fijándose únicamente en los datos más cercanos, mientras que SVM (gracias al kernel radial) consigue adaptar una frontera curva muy suave justo en la zona donde las especies se mezclan.
-* **Los modelos basados en árboles (Random Forest y Gradient Boosting)** dividen el espacio con cortes rectos (formando una especie de escalera). Aunque operan de forma distinta —Random Forest hace la media de muchos árboles independientes y Gradient Boosting mejora los errores paso a paso—, ambos han dado resultados sobresalientes sin necesidad de escalar las variables geométricas.
-* Por último, **la Red Neuronal** es el modelo con mayor capacidad para ajustarse a formas complejas. Sin embargo, hemos visto que gracias a la regularización que le aplicamos (*weight decay*), el modelo decidió trazar fronteras casi rectas, evitando sobreajustarse a los datos de entrenamiento para poder generalizar mejor.
+* **Regresión Logística:** Al ser un modelo lineal, genera fronteras rectas entre las clases. A pesar de su simplicidad, consigue buenos resultados porque las especies del dataset `iris` son bastante separables en estas variables.
+
+* **Random Forest y Gradient Boosting:** Estos métodos, al estar basados en árboles, dividen el espacio mediante cortes paralelos a los ejes. Por eso sus fronteras tienen forma escalonada. Random Forest tiende a generar regiones algo más irregulares, mientras que Gradient Boosting produce transiciones más suaves gracias a la combinación secuencial de árboles.
+
+* **K-Nearest Neighbors (KNN):** La frontera de KNN depende directamente de la posición de los puntos de entrenamiento. Por ello, las regiones de clasificación son más irregulares, especialmente en la zona donde se solapan `versicolor` y `virginica`.
+
+* **SVM Radial:** El kernel radial permite construir fronteras curvas y suaves. Esto resulta útil para separar las clases en zonas donde una frontera lineal no sería tan flexible, especialmente entre `versicolor` y `virginica`.
+
+* **Red Neuronal:** Aunque una red neuronal puede generar fronteras no lineales complejas, en este caso las divisiones son bastante simples. Esto sugiere que, para este dataset, no es necesario un modelo excesivamente complejo para obtener un buen rendimiento.
 
 A nivel de programación, desarrollar todo este análisis comparativo habría sido mucho más largo y propenso a errores sin el uso del paquete `caret`. Esta librería nos ha permitido unificar el preprocesamiento, la validación cruzada y las métricas de evaluación para modelos que por debajo usan paquetes muy diferentes (`nnet`, `kernlab`, `randomForest`, etc.). Esto nos garantiza que la comparación entre todos los algoritmos haya sido justa y en igualdad de condiciones.
 
-Como conclusión final, este trabajo nos demuestra que en un dataset de estas características, aplicar algoritmos muy complejos no supone una mejora drástica frente a los modelos clásicos. Aunque SVM o las Redes Neuronales tienen mucha más flexibilidad, opciones más sencillas como la Regresión Logística o KNN ofrecen resultados prácticamente idénticos. Por tanto, para este caso concreto, la mejor decisión sería optar por los modelos más simples, ya que su coste computacional es mucho menor y son más fáciles de interpretar.
-
+En conjunto, los resultados muestran que, para el dataset `iris`, los modelos más complejos no aportan una mejora clara respecto a métodos más sencillos. Aunque SVM, Random Forest, Gradient Boosting o Redes Neuronales ofrecen mayor flexibilidad, modelos como la Regresión Logística Multinomial o KNN alcanzan resultados muy competitivos. Por tanto, en este caso resulta razonable priorizar modelos más simples, ya que son más fáciles de interpretar y tienen menor coste computacional.

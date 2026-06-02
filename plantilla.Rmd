@@ -10,17 +10,15 @@ header-includes:
   - \renewcommand{\contentsname}{Índice}
   - \usepackage{mathpazo}
   - \usepackage{titlesec}
-  - \renewcommand{\maketitle}{} # Evita que el PDF duplique el título
-  - \newcommand{\sectionbreak}{\clearpage}
-  - \newcommand{\subsectionbreak}{\clearpage}
+  - \renewcommand{\maketitle}{} 
 output:
+  pdf_document:
+    highlight: tango
   html_document:
     toc: true
     toc_float: true # Crea un menú lateral flotante para el índice en HTML
     toc_depth: 3
     theme: readable
-    highlight: tango
-  pdf_document:
     highlight: tango
 ---
 
@@ -727,6 +725,7 @@ ggplot() +
 
 La Máquina de Vector de Soporte con kernel radial exhibe un rendimiento sobresaliente, alineándose con las métricas observadas en los modelos anteriores. Como era de esperar, la clase setosa se clasifica perfectamente debido a su aislamiento espacial.El aspecto más destacable se observa en el gráfico de la frontera de decisión: a diferencia de la Regresión Logística, cuyas divisiones son estrictamente rectas, el kernel RBF permite que las fronteras se "doblen" de forma no lineal para encapsular la región de solapamiento entre las especies versicolor y virginica. Al haber optimizado los parámetros $C$ y $\sigma$, la frontera resultante traza un límite suave y natural entre ambas especies, encontrando un equilibrio idóneo entre el ajuste a los datos de entrenamiento y la capacidad de generalización sin incurrir en un sobreajuste evidente de la frontera hacia puntos ruidosos aislados.
 
+<!--
 ## 3.5. Gradient Boosting 
 
 Gradient Boosting es un método basado en la combinación secuencial de múltiples árboles de decisión poco profundos en general. La idea consiste en construir una sucesión de modelos simples donde cada nuevo árbol intenta corregir los errores cometidos por el conjunto de árboles previamente entrenados.
@@ -875,7 +874,7 @@ ggplot() +
 
 La frontera de decisión muestra cómo Gradient Boosting divide el espacio de características mediante particiones sucesivas generadas por los árboles de decisión. Se observa una separación clara de la especie setosa, mientras que las regiones correspondientes a versicolor y virginica presentan una zona de transición más compleja. Esta estructura refleja la capacidad del modelo para capturar relaciones no lineales y adaptar la clasificación a la distribución de los datos.
 -->
-
+<!--
 ### Análisis de los resultados
 
 Gradient Boosting obtiene un rendimiento muy elevado tanto en entrenamiento como en test. En el conjunto de entrenamiento clasifica correctamente 115 de las 120 observaciones, alcanzando una exactitud del 95,83%. Por su parte, en el conjunto de test clasifica correctamente 28 de las 30 observaciones, lo que supone una exactitud del 93,33%.
@@ -984,13 +983,13 @@ ggplot() +
   theme(plot.title = element_text(face = "bold"))
 ```
 -->
-
+<!--
 ### Análisis de los resultados
 
 La evaluación general de la red neuronal confirma una capacidad de clasificación excepcional. Observamos que el modelo logra una clasificación perfecta para la especie setosa, lo cual es consistente tanto en el mapa de calor como en la separación total que se evidencia en el gráfico de la frontera de decisión bidimensional.
 
 El modelo muestra una dificultad mínima en la distinción entre versicolor y virginica (un único error de clasificación en la matriz de confusión). Esto es teóricamente coherente dada la superposición natural de estas dos especies. Como demuestra el gráfico de proyección bidimensional, aunque la red neuronal tiene la capacidad teórica de generar fronteras no lineales, ha optado por trazar divisiones casi rectilíneas. Este fenómeno ilustra perfectamente el impacto del parámetro de regularización (weight decay): al penalizar los pesos grandes para evitar el sobreajuste, las funciones de activación operan en su régimen lineal. La red concluye que una frontera simple es la solución óptima y más generalizable para este subespacio 2D, evitando crear curvas innecesarias ante datos que ya presentan una clara separabilidad lineal.
-
+-->
 # 4. Análisis Visual Comparativo de Fronteras de Decisión
 
 Para comprender a nivel espacial cómo cada algoritmo fragmenta el espacio de características, hemos entrenado modelos auxiliares bidimensionales utilizando exclusivamente `Petal.Length` y `Petal.Width`. 

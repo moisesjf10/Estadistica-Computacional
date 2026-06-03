@@ -102,7 +102,9 @@ library(datasets)
 library(patchwork)
 library(ggplot2)
 library(GGally)
+```
 
+```{r}
 # Cargar el dataset
 data(iris)
 

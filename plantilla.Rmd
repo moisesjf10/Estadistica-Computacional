@@ -381,22 +381,11 @@ mod_knn <- train(
 print(paste("Valor óptimo de k seleccionado: ", mod_knn$bestTune$k))
 ```
 
-Podemos representar cómo varía la exactitud estimada por validación cruzada en función del número de vecinos considerado.
-
-```{r}
-ggplot(mod_knn) +
-  theme_minimal() +
-  labs(title = "Selección del número de vecinos en KNN",
-       x = "Número de vecinos (k)",
-       y = "Exactitud por validación cruzada") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
-```
-
-Confirmamos visualmente lo devuelto por el proceso de validación cruzada, siendo el número óptimo de vecinos de $k=$ `r mod_knn$bestTune$k`
+Observamos que en este caso el número óptimo de vecinos de $k=$ `r mod_knn$bestTune$k`
 
 ### Evaluación del modelo
 
-Al igual que en los modelos anteriores, evaluamos el rendimiento tanto sobre el conjunto de entrenamiento como sobre el conjunto de test. La evaluación en entrenamiento permite detectar si el modelo se ajusta demasiado a los datos utilizados para construirlo, mientras que el conjunto de test proporciona una estimación de su capacidad de generalización.
+Al igual que en los modelos anteriores, evaluamos el rendimiento tanto sobre el conjunto de entrenamiento como sobre el conjunto de test.
 
 ```{r fig.width=10, fig.height=4.5}
 # Predicción sobre el conjunto de entrenamiento
@@ -419,8 +408,6 @@ Las matrices de confusión muestran que el modelo KNN obtiene un rendimiento bas
 La clase setosa se identifica perfectamente en ambos conjuntos, lo cual era esperable porque suele estar claramente separada de las otras especies. Los errores aparecen únicamente entre versicolor y virginica, que son las dos clases más parecidas entre sí según las variables medidas. En test, las dos observaciones mal clasificadas corresponden a flores virginica que el modelo predice como versicolor.
 
 En general, los resultados indican que KNN funciona bien para este problema. Además, como el rendimiento en test es similar al de entrenamiento, no parece haber un sobreajuste importante.
-
-
 
 
 ### Análisis de los resultados

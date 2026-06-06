@@ -411,7 +411,7 @@ En general, los resultados indican que KNN funciona bien para este problema. Ade
 
 
 ### Análisis de los resultados
-En conjunto, los resultados muestran que KNN funciona bien para el problema de clasificación del conjunto de datos `iris`. Las matrices de confusión muestran una exactitud alta tanto en entrenamiento, 96.67%, como en test, 93.33%. Además, al ser ambos valores similares, no parece haber un sobreajuste importante. no parece haber un sobreajuste importante, por lo que el modelo obtiene una frontera de decisión suficientemente flexible, pero sin depender en exceso de puntos individuales.
+En conjunto, los resultados muestran que KNN funciona bien para el problema de clasificación del conjunto de datos `iris`. Las matrices de confusión muestran una exactitud alta tanto en entrenamiento, 96.67%, como en test, 93.33%. Además, al ser ambos valores similares, no parece haber un sobreajuste importante, por lo que el modelo obtiene una frontera de decisión suficientemente flexible, pero sin depender en exceso de puntos individuales.
 
 Los errores se concentran entre versicolor y virginica, que son las especies con mayor solapamiento, mientras que setosa se clasifica correctamente al estar claramente separada por las variables del pétalo. Esto también se aprecia en la frontera de decisión, donde setosa ocupa una región diferenciada y las dudas aparecen en la zona de transición entre versicolor y virginica.
 

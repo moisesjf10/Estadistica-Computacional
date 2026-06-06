@@ -14,6 +14,12 @@ header-includes:
   - \let\oldtableofcontents\tableofcontents
   - \renewcommand{\tableofcontents}{\oldtableofcontents\newpage}
 output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: readable
+    highlight: tango
   pdf_document:
     toc: true
     toc_depth: 3
@@ -21,12 +27,6 @@ output:
     highlight: tango
     includes:
       before_body: portada.tex
-  html_document:
-    toc: true
-    toc_float: true
-    toc_depth: 3
-    theme: readable
-    highlight: tango
 ---
 
 
